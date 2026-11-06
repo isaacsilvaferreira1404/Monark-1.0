@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "name": "Espresso Monark",
+    "description": "Café intenso, encorpado e com aroma marcante.",
+    "price": 8,
+    "image": "Assests/Monark (6).jpeg",
+    "category": "cafes",
+    "active": true
+  },
+  {
+    "id": 2,
+    "name": "Cappuccino",
+    "description": "Café com leite cremoso e uma delicada camada de espuma.",
+    "price": 13,
+    "image": "Assests/Monark (2).jpeg",
+    "category": "cafes",
+    "active": true
+  },
+  {
+    "id": 3,
+    "name": "Bolo de chocolate",
+    "description": "Massa macia com recheio de chocolate.",
+    "price": 12,
+    "image": "Assests/Monark (3).jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 4,
+    "name": "Croissant doce",
+    "description": "Massa folhada e crocante com recheio especial.",
+    "price": 11,
+    "image": "Assests/Monark (4).jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 5,
+    "name": "Cold Coffee",
+    "description": "Café gelado, refrescante e equilibrado.",
+    "price": 14,
+    "image": "Assests/Monark (5).jpeg",
+    "category": "bebidas",
+    "active": true
+  },
+  {
+    "id": 6,
+    "name": "Sanduíche artesanal",
+    "description": "Pão macio com queijo e ingredientes selecionados.",
+    "price": 16,
+    "image": "Assests/Monark (6).jpeg",
+    "category": "salgados",
+    "active": true
+  }
+]
