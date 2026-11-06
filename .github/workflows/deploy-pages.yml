@@ -1,0 +1,55 @@
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate API URL
+        env:
+          MONARK_API_URL: ${{ vars.MONARK_API_URL }}
+        run: |
+          if [[ ! "$MONARK_API_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
+            echo "::error::Configure a variável de repositório MONARK_API_URL com a URL HTTPS do backend."
+            exit 1
+          fi
+
+      - name: Prepare site
+        env:
+          MONARK_API_URL: ${{ vars.MONARK_API_URL }}
+        run: |
+          mkdir -p _site/Assests
+          cp index.html script.js style.css _site/
+          cp -R Assests/. _site/Assests/
+          printf 'window.MONARK_API_URL = "%s";\n' "$MONARK_API_URL" > _site/config.js
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

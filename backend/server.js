@@ -16,7 +16,11 @@ if (!process.env.FRONTEND_URL) {
     throw new Error("Configure FRONTEND_URL no .env.");
 }
 
-const frontendOrigin = new URL(process.env.FRONTEND_URL).origin;
+const frontendUrl = new URL(process.env.FRONTEND_URL);
+const frontendOrigin = frontendUrl.origin;
+const frontendBaseUrl = `${frontendOrigin}${frontendUrl.pathname.replace(/\/+$/, "")}`;
+const webhookUrl = process.env.WEBHOOK_URL ||
+    (process.env.RENDER_EXTERNAL_URL && `${process.env.RENDER_EXTERNAL_URL}/api/webhook`);
 
 app.use(helmet());
 app.use(cors({
@@ -65,9 +69,9 @@ app.get("/api/products", async (req, res) => {
 });
 
 app.post("/api/checkout", checkoutLimiter, async (req, res) => {
-    if (!process.env.MP_ACCESS_TOKEN || !process.env.WEBHOOK_URL) {
+    if (!process.env.MP_ACCESS_TOKEN || !webhookUrl) {
         return res.status(503).json({
-            error: "Configure MP_ACCESS_TOKEN e WEBHOOK_URL para habilitar pagamentos."
+            error: "Configure MP_ACCESS_TOKEN e a URL pública do webhook para habilitar pagamentos."
         });
     }
 
@@ -163,12 +167,12 @@ app.post("/api/checkout", checkoutLimiter, async (req, res) => {
             payer: { name: customer.name.trim(), email: customer.email.trim().toLowerCase() },
             external_reference: orderId,
             back_urls: {
-                success: `${frontendOrigin}/?pagamento=sucesso`,
-                failure: `${frontendOrigin}/?pagamento=falhou`,
-                pending: `${frontendOrigin}/?pagamento=pendente`
+                success: `${frontendBaseUrl}/?pagamento=sucesso`,
+                failure: `${frontendBaseUrl}/?pagamento=falhou`,
+                pending: `${frontendBaseUrl}/?pagamento=pendente`
             },
             auto_return: "approved",
-            notification_url: process.env.WEBHOOK_URL
+            notification_url: webhookUrl
         };
 
         const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
