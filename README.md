@@ -11,7 +11,7 @@ Site de cafeteria com cardápio no Firestore, carrinho no navegador e checkout h
    - `FIREBASE_SERVICE_ACCOUNT_JSON`: conteúdo completo do JSON de uma conta de serviço do Firebase, com acesso ao Firestore.
    - `FRONTEND_URL`: URL do site GitHub Pages, incluindo o caminho do repositório, por exemplo `https://usuario.github.io/monark/`.
    - `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`: credenciais do Mercado Pago. Use credenciais de teste inicialmente.
-3. Inicialize os produtos no Firestore uma vez, usando as credenciais de serviço: na pasta `backend`, execute `npm ci` e `npm run db:init`.
+3. Inicialize os produtos no Firestore uma vez: localmente, copie `backend/.env.example` para `backend/.env`, informe `FIREBASE_PROJECT_ID` e o caminho do JSON baixado em `GOOGLE_APPLICATION_CREDENTIALS` (ou cole o JSON em `FIREBASE_SERVICE_ACCOUNT_JSON`). Na pasta `backend`, execute `npm ci` e `npm run db:init`.
 4. Após o deploy, confirme que `https://SUA-API.onrender.com/api/health` retorna o status `ok`.
 
 O Render fornece `RENDER_EXTERNAL_URL`, usado automaticamente para montar o endereço do webhook `/api/webhook`. Cadastre esse endereço nas notificações de pagamento da aplicação no Mercado Pago. Não publique credenciais no repositório.
@@ -27,7 +27,7 @@ O workflow publica somente `index.html`, `script.js`, `style.css`, `config.js` g
 ## Desenvolvimento local
 
 - Node.js 20 ou superior.
-- Firestore configurado e credenciais locais disponíveis. Copie `backend/.env.example` para `backend/.env` e preencha as configurações; não envie esse arquivo ao GitHub.
+- Firestore configurado e credenciais locais disponíveis. Copie `backend/.env.example` para `backend/.env`, configure `FIREBASE_PROJECT_ID` e use `GOOGLE_APPLICATION_CREDENTIALS` com o caminho do JSON da conta de serviço ou `FIREBASE_SERVICE_ACCOUNT_JSON` com o conteúdo dele. Não envie `.env` nem o JSON da conta de serviço ao GitHub.
 - Na pasta `backend`, execute `npm ci`, `npm run db:init` (uma vez) e `npm start`.
 - Abra `index.html` com Live Server. O `config.js` local aponta para `http://localhost:3000`.
 
