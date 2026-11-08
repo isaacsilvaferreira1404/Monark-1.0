@@ -238,6 +238,8 @@ function validWebhookSignature(req) {
     if (!timestamp || !received || !/^[a-f0-9]{64}$/i.test(received)) return false;
 
     const manifest = `id:${paymentId};request-id:${requestId};ts:${timestamp};`;
+    if (!process.env.MP_WEBHOOK_SECRET) return false;
+
     const expected = crypto.createHmac("sha256", process.env.MP_WEBHOOK_SECRET)
         .update(manifest).digest("hex");
     const receivedBuffer = Buffer.from(received, "hex");

@@ -29,7 +29,7 @@ if (serviceAccountJson) {
     if (serviceAccountPath && !existsSync(serviceAccountPath)) {
         throw new Error("GOOGLE_APPLICATION_CREDENTIALS aponta para um arquivo que não existe.");
     }
-    if (!serviceAccountPath && !existsSync(localAdcPath) && !cloudRuntime) {
+    if (!serviceAccountPath && !existsSync(localAdcPath) && !cloudRuntime && process.env.VERCEL !== "1") {
         throw new Error(
             "Credenciais do Firebase ausentes. Configure FIREBASE_SERVICE_ACCOUNT_JSON ou " +
             "GOOGLE_APPLICATION_CREDENTIALS no .env, ou faça login com " +
