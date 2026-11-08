@@ -1,4 +1,4 @@
-const API_URL = window.MONARK_API_URL || "http://localhost:3000";
+const API_URL = window.MONARK_API_URL || "";
 
 const money = value => Number(value).toLocaleString("pt-BR", {
     style: "currency",
@@ -218,7 +218,7 @@ async function loadProducts() {
         renderProducts();
     } catch (error) {
         console.error(error);
-        productsMessage.textContent = "Não foi possível carregar o cardápio. Confira se o servidor está ligado.";
+        productsMessage.textContent = "Não foi possível carregar o cardápio. Confira a conexão com a API.";
     }
 }
 

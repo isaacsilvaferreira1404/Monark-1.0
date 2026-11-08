@@ -1,0 +1,18 @@
+{
+  "name": "monark",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "backend"
+  ],
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "scripts": {
+    "start": "npm run start --workspace monark-backend",
+    "dev": "npm run dev --workspace monark-backend",
+    "db:init": "npm run db:init --workspace monark-backend"
+  }
+}

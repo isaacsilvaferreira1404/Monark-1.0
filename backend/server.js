@@ -12,15 +12,17 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
-if (!process.env.FRONTEND_URL) {
-    throw new Error("Configure FRONTEND_URL no .env.");
-}
-
-const frontendUrl = new URL(process.env.FRONTEND_URL);
+const frontendUrl = new URL(
+    process.env.FRONTEND_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+    "http://127.0.0.1:5500"
+);
 const frontendOrigin = frontendUrl.origin;
 const frontendBaseUrl = `${frontendOrigin}${frontendUrl.pathname.replace(/\/+$/, "")}`;
 const webhookUrl = process.env.WEBHOOK_URL ||
-    (process.env.RENDER_EXTERNAL_URL && `${process.env.RENDER_EXTERNAL_URL}/api/webhook`);
+    ((process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL) &&
+        `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL}/api/webhook`);
 
 app.use(helmet());
 app.use(cors({
@@ -329,12 +331,16 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: "Erro interno do servidor." });
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`Monark API disponível em http://localhost:${PORT}`);
-});
+export default app;
 
-async function shutdown() {
-    server.close();
+if (process.env.VERCEL !== "1") {
+    const server = app.listen(PORT, () => {
+        console.log(`Monark API disponível em http://localhost:${PORT}`);
+    });
+
+    function shutdown() {
+        server.close();
+    }
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
 }
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
