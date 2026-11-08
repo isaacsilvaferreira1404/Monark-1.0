@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#493328">
+    <meta name="description" content="Monark Cafeteria: cafés, bebidas, doces e bons momentos.">
+    <title>Monark | Cafeteria</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js" defer></script>
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <header class="header">
+        <a href="#inicio" class="logo" aria-label="Monark - início">
+            <span class="logo-crown">♛</span> MONARK<span class="logo-dot">.</span>
+        </a>
+
+        <nav class="navbar" id="navbar" aria-label="Navegação principal">
+            <a href="#inicio">Início</a>
+            <a href="#cardapio">Cardápio</a>
+            <a href="#sobre">Sobre nós</a>
+            <a href="#contato">Contato</a>
+        </nav>
+
+        <button class="header-button cart-open" id="cart-open" type="button">
+            <span aria-hidden="true">🛒</span> Carrinho
+            <span class="cart-counter" id="cart-count">0</span>
+        </button>
+
+        <button class="menu-toggle" id="menu-toggle" type="button"
+                aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+        <section class="hero" id="inicio">
+            <div class="hero-content">
+                <span class="eyebrow">SEU MOMENTO, SEU CAFÉ</span>
+                <h1>Um bom café muda <span>o seu dia.</span></h1>
+                <p>Um lugar para desacelerar, aproveitar os pequenos momentos e apreciar bons sabores.</p>
+                <div class="hero-buttons">
+                    <a href="#cardapio" class="button primary">Conheça nosso cardápio</a>
+                    <a href="#sobre" class="button secondary">Nossa história</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="./Assests/Monark (2).jpeg" alt="Café servido em uma xícara" onerror="this.src='https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1000'">
+            </div>
+        </section>
+
+        <section class="features" aria-label="Diferenciais">
+            <article class="feature"><span>♻️</span><h3>Materiais sustentáveis</h3><p>Utilizamos materiais que respeitam o meio ambiente.</p></article>
+            <article class="feature"><span>🌍</span><h3>Diminuição de dejetos no solo</h3><p>Práticas essências para a diminuição de dejetos.</p></article>
+            <article class="feature"><span>♻️</span><h3>Materiais Recicláveis</h3><p>Materiais que podem ser reciclados e reutilizados.</p></article>
+        </section>
+
+        <section class="menu-section" id="cardapio">
+            <div class="section-heading">
+                <span class="eyebrow">FEITO PARA VOCÊ</span>
+                <h2>Nosso cardápio</h2>
+                <p>Encontre seu novo favorito entre nossos cafés, bebidas e acompanhamentos.</p>
+            </div>
+
+            <div class="menu-filters" aria-label="Filtrar produtos">
+                <button class="filter-button active" data-filter="todos" type="button">Todos</button>
+                <button class="filter-button" data-filter="cafes" type="button">Cafés</button>
+                <button class="filter-button" data-filter="bebidas" type="button">Bebidas</button>
+                <button class="filter-button" data-filter="doces" type="button">Doces</button>
+                <button class="filter-button" data-filter="salgados" type="button">Salgados</button>
+            </div>
+
+            <p class="loading-message" id="products-message" role="status">Carregando cardápio...</p>
+            <div class="products-grid" id="products-grid"></div>
+        </section>
+
+        <section class="about-section" id="sobre">
+            <div class="about-image">
+                <img src="./Assests/Monark (10).jpeg" alt="Ambiente aconchegante da Monark"
+                     onerror="this.src='https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=1000'">
+            </div>
+            <div class="about-content">
+                <span class="eyebrow">UM POUCO SOBRE NÓS</span>
+                <h2>Um lugar para apreciar a vida com calma.</h2>
+                <p>A Monark nasceu da ideia de que os melhores momentos podem estar nas coisas mais simples.</p>
+                <p>Uma boa conversa, um livro, uma pausa durante o dia e, claro, uma boa xícara de café.</p>
+                <a href="#contato" class="button primary">Venha nos conhecer</a>
+            </div>
+        </section>
+
+        <section class="quote-section">
+            <span>☕</span>
+            <h2>“A vida acontece nos pequenos momentos. Aproveite cada gole.”</h2>
+            <p>MONARK CAFETERIA</p>
+        </section>
+
+        <section class="contact-section" id="contato">
+            <div class="section-heading">
+                <span class="eyebrow">ESTAMOS ESPERANDO POR VOCÊ</span>
+                <h2>Venha tomar um café.</h2>
+                <p>Será um prazer receber você em nossa cafeteria.</p>
+            </div>
+            <div class="contact-grid">
+                <article class="contact-card"><span>📍</span><h3>Endereço</h3><p>Rua Exemplo, 123</p><p>Sua cidade - SP</p></article>
+                <article class="contact-card"><span>🕒</span><h3>Funcionamento</h3><p>Segunda a sábado</p><p>08h às 19h</p></article>
+                <article class="contact-card"><span>📱</span><h3>Instagram</h3><p>@monark.cafe</p><a href="https://instagram.com/" target="_blank" rel="noopener noreferrer">Conheça nosso perfil</a></article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <a href="#inicio" class="logo">♛ MONARK<span class="logo-dot">.</span></a>
+        <p>Um bom café, bons momentos.</p>
+        <p class="copyright">© <span id="current-year"></span> Monark Cafeteria. Todos os direitos reservados.</p>
+    </footer>
+
+    <div class="cart-overlay" id="cart-overlay" aria-hidden="true">
+        <aside class="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+            <div class="cart-header">
+                <h2 id="cart-title">Seu carrinho</h2>
+                <button id="cart-close" type="button" aria-label="Fechar carrinho">✕</button>
+            </div>
+
+            <div id="cart-items" class="cart-items">
+                <p>Seu carrinho está vazio.</p>
+            </div>
+
+            <div class="cart-total"><span>Total:</span><strong id="cart-total">R$ 0,00</strong></div>
+
+            <form id="checkout-form">
+                <h3>Dados para o pedido</h3>
+                <label for="customer-name">Nome</label>
+                <input type="text" id="customer-name" maxlength="120" autocomplete="name" required>
+                <label for="customer-email">E-mail</label>
+                <input type="email" id="customer-email" maxlength="150" autocomplete="email" required>
+                <label for="customer-notes">Observações (opcional)</label>
+                <textarea id="customer-notes" maxlength="500" placeholder="Ex.: sem açúcar, retirar no balcão..."></textarea>
+                <button type="submit" class="checkout-button" id="checkout-button">Continuar para pagamento</button>
+            </form>
+            <p id="checkout-message" class="checkout-message" role="status"></p>
+            <p class="payment-note">O pagamento é processado em ambiente seguro do Mercado Pago. Não informe dados de cartão neste site.</p>
+        </aside>
+    </div>
+</body>
+</html>

@@ -1,11 +1,11 @@
 # Monark Cafeteria
 
-Site de cafeteria com cardápio no Firestore, carrinho no navegador e checkout hospedado pelo Mercado Pago. O frontend e a API são publicados pela Vercel; a API funciona como uma função serverless.
+Site de cafeteria com cardápio no Firestore, carrinho no navegador e checkout hospedado pelo Mercado Pago. O frontend e a API são publicados pela Vercel; os arquivos em `public/` formam o site estático e `api/[...path].js` encaminha os endpoints para uma função serverless.
 
 ## Publicar na Vercel
 
 1. Importe este repositório no painel da Vercel. O repositório Git continua sendo a origem do código; cada push na branch de produção inicia um deploy automático na Vercel.
-2. Use a raiz do repositório como diretório do projeto. A Vercel detecta o Express pelo `server.js` e publica os arquivos de `public/` como conteúdo estático.
+2. Use a raiz do repositório como diretório do projeto, sem configurar um diretório raiz alternativo ou um comando de build. A Vercel publica automaticamente `public/` como conteúdo estático e `api/` como função serverless.
 3. Configure estas variáveis em **Settings → Environment Variables**:
    - `FIREBASE_SERVICE_ACCOUNT_JSON`: conteúdo completo do JSON de uma conta de serviço com acesso ao Firestore.
    - `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`: credenciais do Mercado Pago.
