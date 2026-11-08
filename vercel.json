@@ -1,18 +1,23 @@
 {
   "version": 2,
-  "functions": {
-    "api/[...path].js": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/[...path].js"
+      "src": "api/[...path].js",
+      "use": "@vercel/node"
     },
     {
-      "source": "/:path*",
-      "destination": "/public/:path*"
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/[...path].js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
     }
   ],
   "headers": [
