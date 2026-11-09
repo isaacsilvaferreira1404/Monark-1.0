@@ -27,14 +27,32 @@ if (serviceAccountJson) {
 
     let serviceAccount;
     try {
-        try {
-            const parsedValue = JSON.parse(normalizedValue);
-            serviceAccount = typeof parsedValue === "string" ? JSON.parse(parsedValue) : parsedValue;
-        } catch {
-            const jsonLikeValue = normalizedValue
-                .replace(/([{,])\s*'([^']+)'\s*:/g, '$1"$2":')
-                .replace(/:\s*'([^']*)'/g, ':"$1"');
-            serviceAccount = JSON.parse(jsonLikeValue);
+        const candidates = [
+            normalizedValue,
+            normalizedValue.replace(/^['"]|['"]$/g, ""),
+            normalizedValue.replace(/\\\\(["'])/g, "$1"),
+        ];
+
+        for (const candidate of candidates) {
+            try {
+                const parsedValue = JSON.parse(candidate);
+                serviceAccount = typeof parsedValue === "string" ? JSON.parse(parsedValue) : parsedValue;
+                break;
+            } catch {
+                const jsonLikeValue = candidate
+                    .replace(/([{,])\s*'([^']+)'\s*:/g, '$1"$2":')
+                    .replace(/:\s*'([^']*)'/g, ':"$1"');
+                try {
+                    serviceAccount = JSON.parse(jsonLikeValue);
+                    break;
+                } catch {
+                    continue;
+                }
+            }
+        }
+
+        if (!serviceAccount) {
+            throw new Error("Formato JSON não reconhecido");
         }
     } catch (error) {
         throw new Error(
