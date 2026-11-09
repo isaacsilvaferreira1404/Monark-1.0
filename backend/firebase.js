@@ -7,7 +7,7 @@ import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
-const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "monark-7d352";
+let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "monark-7d352";
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 const localAdcPath = process.env.APPDATA
@@ -60,6 +60,7 @@ if (serviceAccountJson) {
             { cause: error },
         );
     }
+    projectId = serviceAccount.project_id || projectId;
     credential = cert(serviceAccount);
 } else {
     if (serviceAccountPath && !existsSync(serviceAccountPath)) {
