@@ -4,6 +4,8 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import crypto from "node:crypto";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./firebase.js";
 
@@ -11,6 +13,8 @@ dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const publicDirectory = join(projectRoot, "public");
 
 const frontendUrl = new URL(
     process.env.FRONTEND_URL ||
@@ -31,6 +35,7 @@ app.use(cors({
     allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json({ limit: "30kb" }));
+app.use(express.static(publicDirectory));
 
 const checkoutLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -238,6 +243,8 @@ function validWebhookSignature(req) {
     if (!timestamp || !received || !/^[a-f0-9]{64}$/i.test(received)) return false;
 
     const manifest = `id:${paymentId};request-id:${requestId};ts:${timestamp};`;
+    if (!process.env.MP_WEBHOOK_SECRET) return false;
+
     const expected = crypto.createHmac("sha256", process.env.MP_WEBHOOK_SECRET)
         .update(manifest).digest("hex");
     const receivedBuffer = Buffer.from(received, "hex");

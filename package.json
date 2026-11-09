@@ -1,6 +1,7 @@
 {
   "name": "monark",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=20"
   },
