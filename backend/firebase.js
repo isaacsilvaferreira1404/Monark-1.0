@@ -18,15 +18,27 @@ const cloudRuntime = process.env.K_SERVICE || process.env.K_REVISION ||
 
 let credential;
 if (serviceAccountJson) {
-    const rawValue = serviceAccountJson.trim();
-    const normalizedValue = rawValue.replace(/^['"]|['"]$/g, "");
+    let normalizedValue = serviceAccountJson.trim();
+    normalizedValue = normalizedValue.replace(/^FIREBASE_SERVICE_ACCOUNT_JSON\s*=\s*/, "");
+    if ((normalizedValue.startsWith("'") && normalizedValue.endsWith("'")) ||
+        (normalizedValue.startsWith('"') && normalizedValue.endsWith('"'))) {
+        normalizedValue = normalizedValue.slice(1, -1);
+    }
+
     let serviceAccount;
     try {
-        const parsedValue = JSON.parse(normalizedValue);
-        serviceAccount = typeof parsedValue === "string" ? JSON.parse(parsedValue) : parsedValue;
+        try {
+            const parsedValue = JSON.parse(normalizedValue);
+            serviceAccount = typeof parsedValue === "string" ? JSON.parse(parsedValue) : parsedValue;
+        } catch {
+            const jsonLikeValue = normalizedValue
+                .replace(/([{,])\s*'([^']+)'\s*:/g, '$1"$2":')
+                .replace(/:\s*'([^']*)'/g, ':"$1"');
+            serviceAccount = JSON.parse(jsonLikeValue);
+        }
     } catch (error) {
         throw new Error(
-            "FIREBASE_SERVICE_ACCOUNT_JSON deve conter o JSON completo da conta de serviço, sem o nome da variável e sem aspas externas.",
+            "FIREBASE_SERVICE_ACCOUNT_JSON deve conter o JSON completo da conta de serviço.",
             { cause: error },
         );
     }
