@@ -11,3 +11,5 @@ node_modules/
 *firebase-adminsdk*.json
 npm-debug.log*
 .vercel/
+.vercel
+.env*

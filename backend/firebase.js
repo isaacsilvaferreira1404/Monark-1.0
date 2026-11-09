@@ -18,11 +18,17 @@ const cloudRuntime = process.env.K_SERVICE || process.env.K_REVISION ||
 
 let credential;
 if (serviceAccountJson) {
+    const rawValue = serviceAccountJson.trim();
+    const normalizedValue = rawValue.replace(/^['"]|['"]$/g, "");
     let serviceAccount;
     try {
-        serviceAccount = JSON.parse(serviceAccountJson);
+        const parsedValue = JSON.parse(normalizedValue);
+        serviceAccount = typeof parsedValue === "string" ? JSON.parse(parsedValue) : parsedValue;
     } catch (error) {
-        throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON deve conter um JSON válido.", { cause: error });
+        throw new Error(
+            "FIREBASE_SERVICE_ACCOUNT_JSON deve conter o JSON completo da conta de serviço, sem o nome da variável e sem aspas externas.",
+            { cause: error },
+        );
     }
     credential = cert(serviceAccount);
 } else {
