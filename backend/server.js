@@ -28,6 +28,8 @@ const webhookUrl = process.env.WEBHOOK_URL ||
     ((process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL) &&
         `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL}/api/webhook`);
 
+// Vercel terminates the proxy before Express; trust its single forwarded hop for rate limiting.
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({
     origin: frontendOrigin,
