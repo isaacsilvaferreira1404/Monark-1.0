@@ -243,12 +243,7 @@ checkoutForm.addEventListener("submit", async event => {
         return;
     }
 
-    const customer = {
-        name: document.getElementById("customer-name").value.trim(),
-        email: document.getElementById("customer-email").value.trim(),
-        notes: document.getElementById("customer-notes").value.trim()
-    };
-
+    const notes = document.getElementById("customer-notes").value.trim();
     const items = [...cart.values()].map(item => ({
         id: item.id,
         quantity: item.quantity
@@ -261,7 +256,8 @@ checkoutForm.addEventListener("submit", async event => {
         const response = await fetch(`${API_URL}/api/checkout`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ customer, items })
+            credentials: "include",
+            body: JSON.stringify({ notes, items })
         });
 
         const data = await response.json();

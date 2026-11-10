@@ -31,7 +31,8 @@ const webhookUrl = process.env.WEBHOOK_URL ||
 app.use(helmet());
 app.use(cors({
     origin: frontendOrigin,
-    methods: ["GET", "POST"],
+    credentials: true,
+    methods: ["GET", "POST", "PATCH"],
     allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json({ limit: "30kb" }));
@@ -97,15 +98,16 @@ const getSession = async req => {
 };
 
 app.post("/api/auth/register", authLimiter, async (req, res) => {
+    const name = String(req.body?.name || "").trim();
     const email = String(req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
-        return res.status(400).json({ error: "Informe um e-mail válido e uma senha com pelo menos 8 caracteres." });
+    if (name.length < 2 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
+        return res.status(400).json({ error: "Informe seu nome, um e-mail válido e uma senha com pelo menos 8 caracteres." });
     }
     try {
         const userRef = db.collection("users").doc(email);
         if ((await userRef.get()).exists) return res.status(409).json({ error: "Este e-mail já está cadastrado." });
-        await userRef.set({ email, passwordHash: await hashPassword(password), createdAt: FieldValue.serverTimestamp() });
+        await userRef.set({ name, email, passwordHash: await hashPassword(password), createdAt: FieldValue.serverTimestamp() });
         const sessionId = await createSession(email);
         res.cookie(sessionCookie, sessionId, cookieOptions).status(201).json({ email });
     } catch (error) {
@@ -132,8 +134,26 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
 });
 
 app.get("/api/auth/me", async (req, res) => {
-    try { res.json({ user: await getSession(req) }); }
-    catch { res.status(500).json({ error: "Não foi possível verificar a sessão." }); }
+    try {
+        const session = await getSession(req);
+        if (!session) return res.json({ user: null });
+        const user = await db.collection("users").doc(session.email).get();
+        res.json({ user: user.exists ? { email: session.email, name: user.data().name || "" } : null });
+    } catch { res.status(500).json({ error: "Não foi possível verificar a sessão." }); }
+});
+
+app.patch("/api/auth/profile", async (req, res) => {
+    try {
+        const session = await getSession(req);
+        const name = String(req.body?.name || "").trim();
+        if (!session) return res.status(401).json({ error: "Faça login para editar seu perfil." });
+        if (name.length < 2 || name.length > 80) return res.status(400).json({ error: "Informe um nome entre 2 e 80 caracteres." });
+        await db.collection("users").doc(session.email).set({ name, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        res.json({ email: session.email, name });
+    } catch (error) {
+        console.error("Erro ao atualizar perfil:", error);
+        res.status(500).json({ error: "Não foi possível atualizar seu perfil." });
+    }
 });
 
 app.post("/api/auth/logout", async (req, res) => {
@@ -181,17 +201,19 @@ app.post("/api/checkout", checkoutLimiter, async (req, res) => {
         });
     }
 
-    const { customer, items } = req.body ?? {};
+    const { notes, items } = req.body ?? {};
+    const session = await getSession(req);
+    if (!session) return res.status(401).json({ error: "Entre na sua conta antes de finalizar o pedido." });
 
-    if (!customer || typeof customer.name !== "string" ||
-        typeof customer.email !== "string" ||
-        !customer.name.trim() || customer.name.length > 120 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email) ||
-        customer.email.length > 150 ||
-        (customer.notes !== undefined &&
-         (typeof customer.notes !== "string" || customer.notes.length > 500)) ||
+    const userSnapshot = await db.collection("users").doc(session.email).get();
+    const customerName = String(userSnapshot.data()?.name || "").trim();
+    if (!userSnapshot.exists || customerName.length < 2) {
+        return res.status(400).json({ error: "Cadastre um nome no seu perfil antes de finalizar o pedido." });
+    }
+    if (typeof notes !== "undefined" &&
+        (typeof notes !== "string" || notes.length > 500) ||
         !Array.isArray(items) || items.length < 1 || items.length > 30) {
-        return res.status(400).json({ error: "Confira os dados do cliente e os produtos do pedido." });
+        return res.status(400).json({ error: "Confira as observações e os produtos do pedido." });
     }
 
     const quantities = new Map();
@@ -237,9 +259,9 @@ app.post("/api/checkout", checkoutLimiter, async (req, res) => {
             const total = Number(preparedItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2));
 
             transaction.create(orderRef, {
-                customerName: customer.name.trim(),
-                customerEmail: customer.email.trim().toLowerCase(),
-                notes: (customer.notes || "").trim(),
+                customerName,
+                customerEmail: session.email,
+                notes: (notes || "").trim(),
                 items: preparedItems,
                 total,
                 status: "pending",
@@ -270,7 +292,7 @@ app.post("/api/checkout", checkoutLimiter, async (req, res) => {
                 unit_price: item.unitPrice,
                 currency_id: "BRL"
             })),
-            payer: { name: customer.name.trim(), email: customer.email.trim().toLowerCase() },
+            payer: { name: customerName, email: session.email },
             external_reference: orderId,
             back_urls: {
                 success: `${frontendBaseUrl}/?pagamento=sucesso`,
