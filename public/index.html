@@ -123,6 +123,8 @@
             <h2 id="auth-title">Entre na sua conta</h2>
             <p id="auth-description">Acompanhe seus pedidos e agilize suas próximas compras.</p>
             <form id="auth-form">
+                <label for="auth-name" class="register-only" hidden>Nome</label>
+                <input id="auth-name" class="register-only" type="text" maxlength="80" autocomplete="name" hidden>
                 <label for="auth-email">E-mail</label>
                 <input id="auth-email" type="email" autocomplete="email" required>
                 <label for="auth-password">Senha</label>
@@ -130,6 +132,12 @@
                 <button class="button primary" type="submit" id="auth-submit">Entrar</button>
             </form>
             <button class="auth-switch" id="auth-switch" type="button">Ainda não tenho conta</button>
+            <div class="profile-controls" id="profile-controls" hidden>
+                <label for="profile-name">Nome do perfil</label>
+                <input id="profile-name" type="text" maxlength="80" autocomplete="name">
+                <button class="button secondary" type="button" id="profile-save">Salvar nome</button>
+                <button class="auth-switch" type="button" id="auth-logout">Sair da conta</button>
+            </div>
             <p id="auth-message" class="checkout-message" role="status"></p>
         </section>
     </div>
@@ -148,11 +156,8 @@
             <div class="cart-total"><span>Total:</span><strong id="cart-total">R$ 0,00</strong></div>
 
             <form id="checkout-form">
-                <h3>Dados para o pedido</h3>
-                <label for="customer-name">Nome</label>
-                <input type="text" id="customer-name" maxlength="120" autocomplete="name" required>
-                <label for="customer-email">E-mail</label>
-                <input type="email" id="customer-email" maxlength="150" autocomplete="email" required>
+                <h3>Seu pedido</h3>
+                <p class="checkout-account-note" id="checkout-account-note">Entre na sua conta para continuar.</p>
                 <label for="customer-notes">Observações (opcional)</label>
                 <textarea id="customer-notes" maxlength="500" placeholder="Ex.: sem açúcar, retirar no balcão..."></textarea>
                 <button type="submit" class="checkout-button" id="checkout-button">Continuar para pagamento</button>
@@ -171,15 +176,44 @@
             const title = document.getElementById("auth-title");
             const switchButton = document.getElementById("auth-switch");
             const openButton = document.getElementById("auth-open");
+            const profileControls = document.getElementById("profile-controls");
+            const profileName = document.getElementById("profile-name");
+            const profileSave = document.getElementById("profile-save");
+            const logoutButton = document.getElementById("auth-logout");
             let registerMode = false;
+            let currentUser = null;
 
             const setMessage = text => { message.textContent = text; };
-            const open = () => { overlay.setAttribute("aria-hidden", "false"); document.getElementById("auth-email").focus(); };
+            const open = () => {
+                overlay.setAttribute("aria-hidden", "false");
+                if (currentUser) profileName.focus();
+                else document.getElementById("auth-email").focus();
+            };
             const close = () => { overlay.setAttribute("aria-hidden", "true"); setMessage(""); };
             const syncMode = () => {
                 title.textContent = registerMode ? "Crie sua conta" : "Entre na sua conta";
                 submit.textContent = registerMode ? "Criar conta" : "Entrar";
                 switchButton.textContent = registerMode ? "Já tenho uma conta" : "Ainda não tenho conta";
+                document.querySelectorAll(".register-only").forEach(field => {
+                    field.hidden = !registerMode;
+                    field.required = registerMode;
+                });
+            };
+            const syncUser = user => {
+                currentUser = user;
+                const loggedIn = Boolean(user);
+                form.hidden = loggedIn;
+                switchButton.hidden = loggedIn;
+                profileControls.hidden = !loggedIn;
+                openButton.textContent = loggedIn ? `Olá, ${user.name || user.email.split("@")[0]}` : "Entrar";
+                document.getElementById("checkout-account-note").textContent = loggedIn
+                    ? `Pedido em nome de ${user.name || "seu perfil"}.`
+                    : "Entre na sua conta para continuar.";
+                if (loggedIn) profileName.value = user.name || "";
+            };
+            const refreshUser = async () => {
+                const response = await fetch("/api/auth/me", { credentials: "include" });
+                if (response.ok) syncUser((await response.json()).user);
             };
             openButton.addEventListener("click", open);
             document.getElementById("auth-close").addEventListener("click", close);
@@ -192,16 +226,41 @@
                 try {
                     const response = await fetch(`/api/auth/${registerMode ? "register" : "login"}`, {
                         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-                        body: JSON.stringify({ email: document.getElementById("auth-email").value, password: document.getElementById("auth-password").value })
+                        body: JSON.stringify({
+                            name: document.getElementById("auth-name").value,
+                            email: document.getElementById("auth-email").value,
+                            password: document.getElementById("auth-password").value
+                        })
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || "Não foi possível concluir.");
-                    openButton.textContent = `Olá, ${data.email.split("@")[0]}`;
+                    await refreshUser();
                     setMessage(registerMode ? "Conta criada com sucesso." : "Login realizado com sucesso.");
                     setTimeout(close, 900);
                 } catch (error) { setMessage(error.message); }
                 finally { submit.disabled = false; }
             });
+            profileSave.addEventListener("click", async () => {
+                profileSave.disabled = true;
+                try {
+                    const response = await fetch("/api/auth/profile", {
+                        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+                        body: JSON.stringify({ name: profileName.value })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || "Não foi possível salvar o nome.");
+                    syncUser(data);
+                    setMessage("Nome salvo no seu perfil.");
+                } catch (error) { setMessage(error.message); }
+                finally { profileSave.disabled = false; }
+            });
+            logoutButton.addEventListener("click", async () => {
+                await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                syncUser(null);
+                close();
+            });
+            syncMode();
+            refreshUser().catch(() => {});
         })();
     </script>
 </body>

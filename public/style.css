@@ -142,6 +142,11 @@ section { scroll-margin-top: 90px; }
 .checkout-button:hover { background: var(--orange); }
 .checkout-button:disabled { opacity: .6; cursor: wait; }
 .checkout-message { color: #9b392e; font-size: 13px; margin-top: 12px; }
+.checkout-account-note { color: var(--gray); font-size: 13px; margin: -4px 0 12px; }
+.profile-controls { display: grid; gap: 10px; margin-top: 18px; }
+.profile-controls[hidden] { display: none; }
+.profile-controls input { width: 100%; }
+.profile-controls .button { width: 100%; }
 .payment-note { color: var(--gray); font-size: 11px; line-height: 1.5; margin-top: 12px; }
 
 .auth-overlay { display: none; position: fixed; inset: 0; z-index: 300; place-items: center; padding: 20px; background: rgba(35,23,17,.65); }
