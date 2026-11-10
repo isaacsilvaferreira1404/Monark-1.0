@@ -27,6 +27,8 @@
             <a href="#contato">Contato</a>
         </nav>
 
+        <button class="header-button auth-open" id="auth-open" type="button">Entrar</button>
+
         <button class="header-button cart-open" id="cart-open" type="button">
             <span aria-hidden="true">🛒</span> Carrinho
             <span class="cart-counter" id="cart-count">0</span>
@@ -117,7 +119,24 @@
         <p class="copyright">© <span id="current-year"></span> Monark Cafeteria. Todos os direitos reservados.</p>
     </footer>
 
-    <div class="cart-overlay" id="cart-overlay" aria-hidden="true">
+    <div class="auth-overlay" id="auth-overlay" aria-hidden="true">
+        <section class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+            <button class="auth-close" id="auth-close" type="button" aria-label="Fechar login">✕</button>
+            <h2 id="auth-title">Entre na sua conta</h2>
+            <p id="auth-description">Acompanhe seus pedidos e agilize suas próximas compras.</p>
+            <form id="auth-form">
+                <label for="auth-email">E-mail</label>
+                <input id="auth-email" type="email" autocomplete="email" required>
+                <label for="auth-password">Senha</label>
+                <input id="auth-password" type="password" minlength="8" autocomplete="current-password" required>
+                <button class="button primary" type="submit" id="auth-submit">Entrar</button>
+            </form>
+            <button class="auth-switch" id="auth-switch" type="button">Ainda não tenho conta</button>
+            <p id="auth-message" class="checkout-message" role="status"></p>
+        </section>
+    </div>
+
+    <div class="cart-overlay" id="cart-overlay">
         <aside class="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-title">
             <div class="cart-header">
                 <h2 id="cart-title">Seu carrinho</h2>
@@ -144,5 +163,48 @@
             <p class="payment-note">O pagamento é processado em ambiente seguro do Mercado Pago. Não informe dados de cartão neste site.</p>
         </aside>
     </div>
+
+    <script>
+        (() => {
+            const overlay = document.getElementById("auth-overlay");
+            const form = document.getElementById("auth-form");
+            const submit = document.getElementById("auth-submit");
+            const message = document.getElementById("auth-message");
+            const title = document.getElementById("auth-title");
+            const switchButton = document.getElementById("auth-switch");
+            const openButton = document.getElementById("auth-open");
+            let registerMode = false;
+
+            const setMessage = text => { message.textContent = text; };
+            const open = () => { overlay.setAttribute("aria-hidden", "false"); document.getElementById("auth-email").focus(); };
+            const close = () => { overlay.setAttribute("aria-hidden", "true"); setMessage(""); };
+            const syncMode = () => {
+                title.textContent = registerMode ? "Crie sua conta" : "Entre na sua conta";
+                submit.textContent = registerMode ? "Criar conta" : "Entrar";
+                switchButton.textContent = registerMode ? "Já tenho uma conta" : "Ainda não tenho conta";
+            };
+            openButton.addEventListener("click", open);
+            document.getElementById("auth-close").addEventListener("click", close);
+            overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+            switchButton.addEventListener("click", () => { registerMode = !registerMode; syncMode(); });
+            form.addEventListener("submit", async event => {
+                event.preventDefault();
+                submit.disabled = true;
+                setMessage("Aguarde...");
+                try {
+                    const response = await fetch(`/api/auth/${registerMode ? "register" : "login"}`, {
+                        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+                        body: JSON.stringify({ email: document.getElementById("auth-email").value, password: document.getElementById("auth-password").value })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || "Não foi possível concluir.");
+                    openButton.textContent = `Olá, ${data.email.split("@")[0]}`;
+                    setMessage(registerMode ? "Conta criada com sucesso." : "Login realizado com sucesso.");
+                    setTimeout(close, 900);
+                } catch (error) { setMessage(error.message); }
+                finally { submit.disabled = false; }
+            });
+        })();
+    </script>
 </body>
 </html>
