@@ -44,6 +44,95 @@ const checkoutLimiter = rateLimit({
     legacyHeaders: false
 });
 
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false
+});
+
+const sessionCookie = "monark_session";
+const cookieOptions = {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 1000 * 60 * 60 * 24 * 30,
+    path: "/"
+};
+
+const hashPassword = password => new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString("hex");
+    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
+        if (error) return reject(error);
+        resolve(`${salt}:${derivedKey.toString("hex")}`);
+    });
+});
+
+const verifyPassword = (password, storedHash) => new Promise(resolve => {
+    const [salt, key] = String(storedHash || "").split(":");
+    if (!salt || !key) return resolve(false);
+    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
+        if (error) return resolve(false);
+        const expected = Buffer.from(key, "hex");
+        resolve(expected.length === derivedKey.length && crypto.timingSafeEqual(expected, derivedKey));
+    });
+});
+
+const getSession = async req => {
+    const rawCookie = req.headers.cookie || "";
+    const sessionId = rawCookie.split(";").map(value => value.trim()).find(value => value.startsWith(`${sessionCookie}=`))?.split("=").slice(1).join("=");
+    if (!sessionId) return null;
+    const session = await db.collection("sessions").doc(sessionId).get();
+    if (!session.exists || session.data().expiresAt.toMillis() < Date.now()) return null;
+    return session.data();
+};
+
+app.post("/api/auth/register", authLimiter, async (req, res) => {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
+        return res.status(400).json({ error: "Informe um e-mail válido e uma senha com pelo menos 8 caracteres." });
+    }
+    try {
+        const userRef = db.collection("users").doc(email);
+        if ((await userRef.get()).exists) return res.status(409).json({ error: "Este e-mail já está cadastrado." });
+        await userRef.set({ email, passwordHash: await hashPassword(password), createdAt: FieldValue.serverTimestamp() });
+        res.status(201).json({ email });
+    } catch (error) {
+        console.error("Erro ao criar conta:", error);
+        res.status(500).json({ error: "Não foi possível criar sua conta." });
+    }
+});
+
+app.post("/api/auth/login", authLimiter, async (req, res) => {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+    try {
+        const user = await db.collection("users").doc(email).get();
+        if (!user.exists || !(await verifyPassword(password, user.data().passwordHash))) {
+            return res.status(401).json({ error: "E-mail ou senha inválidos." });
+        }
+        const sessionId = crypto.randomUUID();
+        await db.collection("sessions").doc(sessionId).set({ email, expiresAt: new Date(Date.now() + cookieOptions.maxAge) });
+        res.cookie(sessionCookie, sessionId, cookieOptions).json({ email });
+    } catch (error) {
+        console.error("Erro ao entrar:", error);
+        res.status(500).json({ error: "Não foi possível entrar agora." });
+    }
+});
+
+app.get("/api/auth/me", async (req, res) => {
+    try { res.json({ user: await getSession(req) }); }
+    catch { res.status(500).json({ error: "Não foi possível verificar a sessão." }); }
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+    const rawCookie = req.headers.cookie || "";
+    const sessionId = rawCookie.split(";").map(value => value.trim()).find(value => value.startsWith(`${sessionCookie}=`))?.split("=").slice(1).join("=");
+    if (sessionId) await db.collection("sessions").doc(sessionId).delete().catch(() => {});
+    res.clearCookie(sessionCookie, { ...cookieOptions, maxAge: undefined }).json({ ok: true });
+});
+
 app.get("/api/health", async (req, res) => {
     try {
         await db.collection("products").limit(1).get();
