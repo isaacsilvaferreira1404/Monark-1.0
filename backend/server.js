@@ -52,6 +52,15 @@ const authLimiter = rateLimit({
 });
 
 const sessionCookie = "monark_session";
+
+const createSession = async email => {
+    const sessionId = crypto.randomUUID();
+    await db.collection("sessions").doc(sessionId).set({
+        email,
+        expiresAt: new Date(Date.now() + cookieOptions.maxAge)
+    });
+    return sessionId;
+};
 const cookieOptions = {
     httpOnly: true,
     sameSite: "lax",
@@ -90,14 +99,15 @@ const getSession = async req => {
 app.post("/api/auth/register", authLimiter, async (req, res) => {
     const email = String(req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
         return res.status(400).json({ error: "Informe um e-mail válido e uma senha com pelo menos 8 caracteres." });
     }
     try {
         const userRef = db.collection("users").doc(email);
         if ((await userRef.get()).exists) return res.status(409).json({ error: "Este e-mail já está cadastrado." });
         await userRef.set({ email, passwordHash: await hashPassword(password), createdAt: FieldValue.serverTimestamp() });
-        res.status(201).json({ email });
+        const sessionId = await createSession(email);
+        res.cookie(sessionCookie, sessionId, cookieOptions).status(201).json({ email });
     } catch (error) {
         console.error("Erro ao criar conta:", error);
         res.status(500).json({ error: "Não foi possível criar sua conta." });
