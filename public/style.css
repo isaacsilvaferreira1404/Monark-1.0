@@ -163,6 +163,7 @@ section { scroll-margin-top: 90px; }
 .auth-modal { position: relative; width: min(100%, 420px); padding: 32px; border-radius: 18px; background: var(--cream); box-shadow: 0 24px 70px rgba(35,23,17,.25); }
 .auth-modal h2 { margin-bottom: 8px; }
 .auth-modal form { display: grid; gap: 9px; margin-top: 22px; }
+#auth-overlay #auth-form[hidden] { display: none !important; }
 .auth-modal input { width: 100%; padding: 12px 13px; border: 1px solid #d8c6b9; border-radius: 8px; background: #fffaf5; font: inherit; }
 .auth-close { position: absolute; top: 14px; right: 14px; border: 0; background: none; color: var(--brown); font-size: 18px; cursor: pointer; }
 .auth-switch { margin-top: 16px; border: 0; background: none; color: var(--brown); text-decoration: underline; cursor: pointer; }
