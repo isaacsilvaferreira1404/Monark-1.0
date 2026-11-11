@@ -55,6 +55,10 @@ const authLimiter = rateLimit({
 });
 
 const sessionCookie = "monark_session";
+const storeCoordinates = { latitude: -23.4965617, longitude: -46.8532208 };
+const whatsappNumber = "5511989480983";
+const deliveryBaseFee = 5;
+const deliveryPerKilometer = 2;
 
 const createSession = async email => {
     const sessionId = crypto.randomUUID();
@@ -101,15 +105,16 @@ const getSession = async req => {
 
 app.post("/api/auth/register", authLimiter, async (req, res) => {
     const name = String(req.body?.name || "").trim();
+    const phone = String(req.body?.phone || "").replace(/\D/g, "");
     const email = String(req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
-    if (name.length < 2 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
-        return res.status(400).json({ error: "Informe seu nome, um e-mail válido e uma senha com pelo menos 8 caracteres." });
+    if (name.length < 2 || name.length > 80 || phone.length < 10 || phone.length > 15 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
+        return res.status(400).json({ error: "Informe nome, telefone válido, e-mail válido e senha com pelo menos 8 caracteres." });
     }
     try {
         const userRef = db.collection("users").doc(email);
         if ((await userRef.get()).exists) return res.status(409).json({ error: "Este e-mail já está cadastrado." });
-        await userRef.set({ name, email, passwordHash: await hashPassword(password), createdAt: FieldValue.serverTimestamp() });
+        await userRef.set({ name, phone, email, passwordHash: await hashPassword(password), createdAt: FieldValue.serverTimestamp() });
         const sessionId = await createSession(email);
         res.cookie(sessionCookie, sessionId, cookieOptions).status(201).json({ email });
     } catch (error) {
@@ -140,7 +145,7 @@ app.get("/api/auth/me", async (req, res) => {
         const session = await getSession(req);
         if (!session) return res.json({ user: null });
         const user = await db.collection("users").doc(session.email).get();
-        res.json({ user: user.exists ? { email: session.email, name: user.data().name || "" } : null });
+        res.json({ user: user.exists ? { email: session.email, name: user.data().name || "", phone: user.data().phone || "" } : null });
     } catch { res.status(500).json({ error: "Não foi possível verificar a sessão." }); }
 });
 
@@ -148,10 +153,11 @@ app.patch("/api/auth/profile", async (req, res) => {
     try {
         const session = await getSession(req);
         const name = String(req.body?.name || "").trim();
+        const phone = String(req.body?.phone || "").replace(/\D/g, "");
         if (!session) return res.status(401).json({ error: "Faça login para editar seu perfil." });
-        if (name.length < 2 || name.length > 80) return res.status(400).json({ error: "Informe um nome entre 2 e 80 caracteres." });
-        await db.collection("users").doc(session.email).set({ name, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-        res.json({ email: session.email, name });
+        if (name.length < 2 || name.length > 80 || phone.length < 10 || phone.length > 15) return res.status(400).json({ error: "Informe nome e telefone válidos." });
+        await db.collection("users").doc(session.email).set({ name, phone, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        res.json({ email: session.email, name, phone });
     } catch (error) {
         console.error("Erro ao atualizar perfil:", error);
         res.status(500).json({ error: "Não foi possível atualizar seu perfil." });
@@ -163,6 +169,47 @@ app.post("/api/auth/logout", async (req, res) => {
     const sessionId = rawCookie.split(";").map(value => value.trim()).find(value => value.startsWith(`${sessionCookie}=`))?.split("=").slice(1).join("=");
     if (sessionId) await db.collection("sessions").doc(sessionId).delete().catch(() => {});
     res.clearCookie(sessionCookie, { ...cookieOptions, maxAge: undefined }).json({ ok: true });
+});
+
+const lookupDeliveryAddress = async postalCode => {
+    const normalizedPostalCode = String(postalCode || "").replace(/\D/g, "");
+    if (!/^\d{8}$/.test(normalizedPostalCode)) throw new Error("Informe um CEP válido com 8 dígitos.");
+    const response = await fetch(`https://brasilapi.com.br/api/cep/v2/${normalizedPostalCode}`, {
+        signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) throw new Error(response.status === 404 ? "CEP não encontrado." : "Não foi possível consultar o CEP. Tente novamente.");
+    const data = await response.json();
+    const latitude = Number(data.location?.coordinates?.latitude);
+    const longitude = Number(data.location?.coordinates?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error("Não foi possível calcular a distância para este CEP.");
+    const toRadians = degrees => degrees * Math.PI / 180;
+    const lat1 = toRadians(storeCoordinates.latitude);
+    const lat2 = toRadians(latitude);
+    const deltaLatitude = lat2 - lat1;
+    const deltaLongitude = toRadians(longitude - storeCoordinates.longitude);
+    const haversine = Math.sin(deltaLatitude / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLongitude / 2) ** 2;
+    const distanceKm = 6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+    const deliveryFee = Math.round((deliveryBaseFee + deliveryPerKilometer * distanceKm) * 100) / 100;
+    return {
+        postalCode: normalizedPostalCode,
+        street: data.street || "",
+        neighborhood: data.neighborhood || "",
+        city: data.city || "",
+        state: data.state || "",
+        distanceKm: Math.round(distanceKm * 10) / 10,
+        deliveryFee,
+        eligible: distanceKm <= 20
+    };
+};
+
+app.post("/api/delivery/quote", checkoutLimiter, async (req, res) => {
+    try {
+        const address = await lookupDeliveryAddress(req.body?.postalCode);
+        if (!address.eligible) return res.status(422).json({ ...address, error: "Este endereço fica a mais de 20 km da cafeteria e está fora da área de entrega." });
+        res.json(address);
+    } catch (error) {
+        res.status(400).json({ error: error.message || "Não foi possível calcular o frete." });
+    }
 });
 
 app.get("/api/health", async (req, res) => {
@@ -197,153 +244,101 @@ app.get("/api/products", async (req, res) => {
 });
 
 app.post("/api/checkout", checkoutLimiter, async (req, res) => {
-    if (!process.env.MP_ACCESS_TOKEN || !webhookUrl) {
-        return res.status(503).json({
-            error: "Configure MP_ACCESS_TOKEN e a URL pública do webhook para habilitar pagamentos."
-        });
-    }
-
-    const { notes, items } = req.body ?? {};
+    const { notes, items, postalCode, houseNumber } = req.body ?? {};
     const session = await getSession(req);
     if (!session) return res.status(401).json({ error: "Entre na sua conta antes de finalizar o pedido." });
 
     const userSnapshot = await db.collection("users").doc(session.email).get();
-    const customerName = String(userSnapshot.data()?.name || "").trim();
-    if (!userSnapshot.exists || customerName.length < 2) {
-        return res.status(400).json({ error: "Cadastre um nome no seu perfil antes de finalizar o pedido." });
+    const user = userSnapshot.data() || {};
+    const customerName = String(user.name || "").trim();
+    const customerPhone = String(user.phone || "").replace(/\D/g, "");
+    const normalizedHouseNumber = String(houseNumber || "").trim();
+    if (!userSnapshot.exists || customerName.length < 2 || customerPhone.length < 10) {
+        return res.status(400).json({ error: "Atualize seu nome e telefone na sua conta antes de finalizar." });
     }
-    if (typeof notes !== "undefined" &&
-        (typeof notes !== "string" || notes.length > 500) ||
+    if (!normalizedHouseNumber || normalizedHouseNumber.length > 20 ||
+        (typeof notes !== "undefined" && (typeof notes !== "string" || notes.length > 500)) ||
         !Array.isArray(items) || items.length < 1 || items.length > 30) {
-        return res.status(400).json({ error: "Confira as observações e os produtos do pedido." });
+        return res.status(400).json({ error: "Confira o endereço, as observações e os produtos do pedido." });
     }
 
     const quantities = new Map();
     for (const item of items) {
         const id = Number(item?.id);
         const quantity = Number(item?.quantity);
-        if (!Number.isSafeInteger(id) || id <= 0 ||
-            !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 20) {
+        if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 20) {
             return res.status(400).json({ error: "Produto ou quantidade inválida." });
         }
         quantities.set(id, (quantities.get(id) || 0) + quantity);
     }
-    if ([...quantities.values()].some(quantity => quantity > 20)) {
-        return res.status(400).json({ error: "O limite é de 20 unidades por produto." });
-    }
-
-    const orderId = crypto.randomUUID();
-    const orderRef = db.collection("orders").doc(orderId);
-    let orderCreated = false;
+    if ([...quantities.values()].some(quantity => quantity > 20)) return res.status(400).json({ error: "O limite é de 20 unidades por produto." });
 
     try {
+        const delivery = await lookupDeliveryAddress(postalCode);
+        if (!delivery.eligible) return res.status(422).json({ error: "Este endereço fica a mais de 20 km da cafeteria e está fora da área de entrega." });
+        const orderId = crypto.randomUUID();
+        const orderRef = db.collection("orders").doc(orderId);
         const orderItems = await db.runTransaction(async transaction => {
             const ids = [...quantities.keys()].sort((a, b) => a - b);
-            const productRefs = ids.map(id => db.collection("products").doc(String(id)));
-            const productDocs = await transaction.getAll(...productRefs);
+            const refs = ids.map(id => db.collection("products").doc(String(id)));
+            const documents = await transaction.getAll(...refs);
+            if (documents.some(document => !document.exists || document.data().active !== true)) return null;
 
-            if (productDocs.some(document => !document.exists || document.data().active !== true)) {
-                return null;
-            }
-
-            const preparedItems = productDocs.map(document => {
+            const preparedItems = documents.map(document => {
                 const product = document.data();
                 const quantity = quantities.get(product.id);
                 const unitPrice = Number(product.price);
-                return {
-                    id: product.id,
-                    name: product.name,
-                    quantity,
-                    unitPrice,
-                    subtotal: Number((unitPrice * quantity).toFixed(2))
-                };
+                return { id: product.id, name: product.name, quantity, unitPrice, subtotal: Number((unitPrice * quantity).toFixed(2)) };
             });
-            const total = Number(preparedItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2));
-
+            const productsTotal = Number(preparedItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2));
+            const total = Number((productsTotal + delivery.deliveryFee).toFixed(2));
             transaction.create(orderRef, {
                 customerName,
                 customerEmail: session.email,
+                customerPhone,
+                address: {
+                    postalCode: delivery.postalCode,
+                    street: delivery.street,
+                    neighborhood: delivery.neighborhood,
+                    city: delivery.city,
+                    state: delivery.state,
+                    houseNumber: normalizedHouseNumber
+                },
+                distanceKm: delivery.distanceKm,
+                deliveryFee: delivery.deliveryFee,
+                productsTotal,
                 notes: (notes || "").trim(),
                 items: preparedItems,
                 total,
-                status: "pending",
-                payment: {
-                    provider: "mercado_pago",
-                    preferenceId: null,
-                    paymentId: null,
-                    status: "pending",
-                    amount: total
-                },
+                status: "awaiting_whatsapp_confirmation",
+                channel: "whatsapp",
                 createdAt: FieldValue.serverTimestamp(),
                 updatedAt: FieldValue.serverTimestamp()
             });
-
-            return preparedItems;
+            return { preparedItems, productsTotal, total };
         });
 
-        if (!orderItems) {
-            return res.status(400).json({ error: "Um ou mais produtos não estão disponíveis." });
-        }
-        orderCreated = true;
-
-        const preferencePayload = {
-            items: orderItems.map(item => ({
-                id: String(item.id),
-                title: item.name,
-                quantity: item.quantity,
-                unit_price: item.unitPrice,
-                currency_id: "BRL"
-            })),
-            payer: { name: customerName, email: session.email },
-            external_reference: orderId,
-            back_urls: {
-                success: `${frontendBaseUrl}/?pagamento=sucesso`,
-                failure: `${frontendBaseUrl}/?pagamento=falhou`,
-                pending: `${frontendBaseUrl}/?pagamento=pendente`
-            },
-            auto_return: "approved",
-            notification_url: webhookUrl
-        };
-
-        const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${process.env.MP_ACCESS_TOKEN}`
-            },
-            body: JSON.stringify(preferencePayload),
-            signal: AbortSignal.timeout(15000)
-        });
-
-        const mpData = await mpResponse.json();
-        if (!mpResponse.ok || !mpData.id || !mpData.init_point) {
-            console.error("Erro Mercado Pago:", mpData);
-            await orderRef.update({
-                status: "payment_error",
-                updatedAt: FieldValue.serverTimestamp()
-            });
-            return res.status(502).json({ error: "O serviço de pagamento não está disponível. Tente novamente." });
-        }
-
-        await orderRef.update({
-            "payment.preferenceId": String(mpData.id),
-            updatedAt: FieldValue.serverTimestamp()
-        });
-
-        res.status(201).json({ orderId, checkoutUrl: mpData.init_point });
+        if (!orderItems) return res.status(400).json({ error: "Um ou mais produtos não estão disponíveis." });
+        const addressLine = [delivery.street, normalizedHouseNumber, delivery.neighborhood, `${delivery.city} - ${delivery.state}`, `CEP ${delivery.postalCode}`].filter(Boolean).join(", ");
+        const messageLines = [
+            `Olá! Quero finalizar o pedido ${orderId.slice(0, 8)}.`,
+            `Cliente: ${customerName}`,
+            `Telefone: ${customerPhone}`,
+            `Endereço: ${addressLine}`,
+            "",
+            "Produtos:",
+            ...orderItems.preparedItems.map(item => `${item.quantity}x ${item.name} — ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.subtotal)}`),
+            `Subtotal: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(orderItems.productsTotal)}`,
+            `Distância: ${delivery.distanceKm} km`,
+            `Frete: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(delivery.deliveryFee)}`,
+            `Total: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(orderItems.total)}`,
+            ...(notes?.trim() ? [`Observações: ${notes.trim()}`] : [])
+        ];
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(messageLines.join("\n"))}`;
+        res.status(201).json({ orderId, whatsappUrl, productsTotal: orderItems.productsTotal, deliveryFee: delivery.deliveryFee, total: orderItems.total });
     } catch (error) {
-        console.error("Erro no checkout:", error);
-        if (orderCreated) {
-            try {
-                await orderRef.update({
-                    status: "payment_error",
-                    updatedAt: FieldValue.serverTimestamp()
-                });
-            } catch (updateError) {
-                console.error("Erro ao atualizar o status do pedido:", updateError);
-            }
-        }
-        res.status(500).json({ error: "Não foi possível criar seu pedido. Tente novamente." });
+        console.error("Erro ao preparar pedido para WhatsApp:", error);
+        res.status(500).json({ error: error.message || "Não foi possível criar seu pedido. Tente novamente." });
     }
 });
 

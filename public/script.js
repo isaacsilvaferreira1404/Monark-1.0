@@ -35,6 +35,15 @@ const cartTotalElement = document.getElementById("cart-total");
 const checkoutForm = document.getElementById("checkout-form");
 const checkoutButton = document.getElementById("checkout-button");
 const checkoutMessage = document.getElementById("checkout-message");
+const postalCodeInput = document.getElementById("delivery-postal-code");
+const deliveryAddress = document.getElementById("delivery-address");
+const deliveryStatus = document.getElementById("delivery-status");
+const deliveryFeeElement = document.getElementById("delivery-fee");
+const grandTotalElement = document.getElementById("grand-total");
+const deliveryHouseNumber = document.getElementById("delivery-house-number");
+deliveryHouseNumber.required = false;
+let deliveryQuote = null;
+let quoteRequest = 0;
 
 function openCart() {
     cartOverlay.classList.add("active");
@@ -122,6 +131,9 @@ function renderCart() {
 
     cartCountElement.textContent = count;
     cartTotalElement.textContent = money(total);
+    const deliveryFee = deliveryQuote?.deliveryFee || 0;
+    grandTotalElement.textContent = money(total + deliveryFee);
+    deliveryFeeElement.textContent = deliveryQuote ? money(deliveryFee) : "Aguardando CEP";
 }
 
 /* Carregar produtos reais da API; preços nunca são confiados ao navegador no checkout */
@@ -233,7 +245,59 @@ document.querySelectorAll(".filter-button").forEach(button => {
     });
 });
 
-/* Enviar pedido para o backend */
+async function requestDeliveryQuote() {
+    const postalCode = postalCodeInput.value.replace(/\D/g, "");
+    deliveryQuote = null;
+    deliveryAddress.hidden = true;
+    deliveryHouseNumber.required = false;
+    deliveryFeeElement.textContent = "Aguardando CEP";
+    renderCart();
+    if (postalCode.length !== 8) {
+        deliveryStatus.textContent = "Digite os 8 dígitos do CEP para consultar o endereço.";
+        return;
+    }
+
+    const requestId = ++quoteRequest;
+    deliveryStatus.textContent = "Consultando CEP e calculando o frete...";
+    try {
+        const response = await fetch(`${API_URL}/api/delivery/quote`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ postalCode })
+        });
+        const data = await response.json();
+        if (requestId !== quoteRequest || postalCode !== postalCodeInput.value.replace(/\D/g, "")) return;
+        if (!response.ok) throw new Error(data.error || "Não foi possível calcular o frete.");
+        deliveryQuote = data;
+        document.getElementById("delivery-street").value = data.street || "Endereço não informado pelo CEP";
+        document.getElementById("delivery-neighborhood").value = data.neighborhood || "";
+        document.getElementById("delivery-city").value = `${data.city || ""}${data.state ? ` / ${data.state}` : ""}`;
+        document.getElementById("delivery-distance").textContent = `Distância estimada: ${data.distanceKm.toLocaleString("pt-BR")} km em linha reta desde o Centro Comercial Alphaville.`;
+        deliveryAddress.hidden = false;
+        deliveryHouseNumber.required = true;
+        deliveryStatus.textContent = "Endereço encontrado. Informe apenas o número da casa.";
+        renderCart();
+    } catch (error) {
+        if (requestId !== quoteRequest) return;
+        deliveryStatus.textContent = error.message;
+    }
+}
+
+postalCodeInput.addEventListener("input", () => {
+    const digits = postalCodeInput.value.replace(/\D/g, "").slice(0, 8);
+    postalCodeInput.value = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    quoteRequest += 1;
+    if (digits.length === 8) requestDeliveryQuote();
+    else {
+        deliveryQuote = null;
+        deliveryAddress.hidden = true;
+        deliveryHouseNumber.required = false;
+        deliveryStatus.textContent = "Digite os 8 dígitos do CEP para consultar o endereço.";
+        renderCart();
+    }
+});
+
+/* Salvar pedido e abrir a conversa do WhatsApp */
 checkoutForm.addEventListener("submit", async event => {
     event.preventDefault();
     checkoutMessage.textContent = "";
@@ -242,36 +306,32 @@ checkoutForm.addEventListener("submit", async event => {
         checkoutMessage.textContent = "Adicione pelo menos um produto ao carrinho.";
         return;
     }
+    if (!deliveryQuote || !deliveryHouseNumber.value.trim()) {
+        checkoutMessage.textContent = "Informe um CEP atendido e o número da casa.";
+        return;
+    }
 
     const notes = document.getElementById("customer-notes").value.trim();
-    const items = [...cart.values()].map(item => ({
-        id: item.id,
-        quantity: item.quantity
-    }));
-
+    const items = [...cart.values()].map(item => ({ id: item.id, quantity: item.quantity }));
     checkoutButton.disabled = true;
-    checkoutButton.textContent = "Preparando pagamento...";
+    checkoutButton.textContent = "Preparando seu pedido...";
 
     try {
         const response = await fetch(`${API_URL}/api/checkout`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ notes, items })
+            body: JSON.stringify({ notes, items, postalCode: postalCodeInput.value, houseNumber: deliveryHouseNumber.value.trim() })
         });
-
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível criar o pedido.");
-        if (!data.checkoutUrl || !data.checkoutUrl.startsWith("https://")) {
-            throw new Error("O provedor não retornou um endereço de pagamento válido.");
-        }
-
-        sessionStorage.setItem("monarkOrderId", String(data.orderId));
-        window.location.assign(data.checkoutUrl);
+        const whatsappUrl = new URL(data.whatsappUrl);
+        if (whatsappUrl.protocol !== "https:" || whatsappUrl.hostname !== "wa.me") throw new Error("Não foi possível abrir o WhatsApp.");
+        window.location.assign(whatsappUrl.href);
     } catch (error) {
         checkoutMessage.textContent = error.message;
         checkoutButton.disabled = false;
-        checkoutButton.textContent = "Continuar para pagamento";
+        checkoutButton.textContent = "Finalizar compra pelo WhatsApp";
     }
 });
 
