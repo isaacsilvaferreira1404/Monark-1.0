@@ -125,6 +125,8 @@
             <form id="auth-form">
                 <label for="auth-name" class="register-only" hidden>Nome</label>
                 <input id="auth-name" class="register-only" type="text" maxlength="80" autocomplete="name" hidden>
+                <label for="auth-phone" class="register-only" hidden>Telefone</label>
+                <input id="auth-phone" class="register-only" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="(11) 99999-9999" hidden>
                 <label for="auth-email">E-mail</label>
                 <input id="auth-email" type="email" autocomplete="email" required>
                 <label for="auth-password">Senha</label>
@@ -134,8 +136,10 @@
             <button class="auth-switch" id="auth-switch" type="button">Ainda não tenho conta</button>
             <div class="profile-controls" id="profile-controls" hidden>
                 <label for="profile-name">Nome do perfil</label>
-                <input id="profile-name" type="text" maxlength="80" autocomplete="name">
-                <button class="button secondary" type="button" id="profile-save">Salvar nome</button>
+                <input id="profile-name" type="text" maxlength="80" autocomplete="name" required>
+                <label for="profile-phone">Telefone</label>
+                <input id="profile-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" required>
+                <button class="button secondary" type="button" id="profile-save">Salvar alterações</button>
                 <button class="auth-switch" type="button" id="auth-logout">Sair da conta</button>
             </div>
             <p id="auth-message" class="checkout-message" role="status"></p>
@@ -153,17 +157,35 @@
                 <p>Seu carrinho está vazio.</p>
             </div>
 
-            <div class="cart-total"><span>Total:</span><strong id="cart-total">R$ 0,00</strong></div>
+            <div class="cart-total"><span>Subtotal dos produtos:</span><strong id="cart-total">R$ 0,00</strong></div>
 
             <form id="checkout-form">
-                <h3>Seu pedido</h3>
+                <h3>Entrega</h3>
                 <p class="checkout-account-note" id="checkout-account-note">Entre na sua conta para continuar.</p>
+                <label for="delivery-postal-code">CEP</label>
+                <input id="delivery-postal-code" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000" required>
+                <p class="delivery-status" id="delivery-status" role="status">Digite o CEP para consultar o endereço e calcular o frete.</p>
+                <div class="delivery-address" id="delivery-address" hidden>
+                    <label for="delivery-street">Rua</label>
+                    <input id="delivery-street" type="text" readonly>
+                    <label for="delivery-neighborhood">Bairro</label>
+                    <input id="delivery-neighborhood" type="text" readonly>
+                    <label for="delivery-city">Cidade / UF</label>
+                    <input id="delivery-city" type="text" readonly>
+                    <label for="delivery-house-number">Número da casa</label>
+                    <input id="delivery-house-number" type="text" maxlength="20" autocomplete="address-line2" placeholder="Número ou s/n" required>
+                    <p class="delivery-distance" id="delivery-distance"></p>
+                </div>
+                <div class="delivery-summary">
+                    <div><span>Frete</span><strong id="delivery-fee">Aguardando CEP</strong></div>
+                    <div class="delivery-grand-total"><span>Total do pedido</span><strong id="grand-total">R$ 0,00</strong></div>
+                </div>
+                <p class="delivery-policy">Entrega disponível até 20 km do Centro Comercial Alphaville. Frete: R$ 5,00 + R$ 2,00 por km estimado.</p>
                 <label for="customer-notes">Observações (opcional)</label>
                 <textarea id="customer-notes" maxlength="500" placeholder="Ex.: sem açúcar, retirar no balcão..."></textarea>
-                <button type="submit" class="checkout-button" id="checkout-button">Continuar para pagamento</button>
+                <button type="submit" class="checkout-button" id="checkout-button">Finalizar compra pelo WhatsApp</button>
             </form>
             <p id="checkout-message" class="checkout-message" role="status"></p>
-            <p class="payment-note">O pagamento é processado em ambiente seguro do Mercado Pago. Não informe dados de cartão neste site.</p>
         </aside>
     </div>
 
@@ -178,6 +200,7 @@
             const openButton = document.getElementById("auth-open");
             const profileControls = document.getElementById("profile-controls");
             const profileName = document.getElementById("profile-name");
+            const profilePhone = document.getElementById("profile-phone");
             const profileSave = document.getElementById("profile-save");
             const logoutButton = document.getElementById("auth-logout");
             let registerMode = false;
@@ -205,11 +228,14 @@
                 form.hidden = loggedIn;
                 switchButton.hidden = loggedIn;
                 profileControls.hidden = !loggedIn;
-                openButton.textContent = loggedIn ? `Olá, ${user.name || user.email.split("@")[0]}` : "Entrar";
+                openButton.textContent = loggedIn ? "Minha conta" : "Entrar";
                 document.getElementById("checkout-account-note").textContent = loggedIn
                     ? `Pedido em nome de ${user.name || "seu perfil"}.`
                     : "Entre na sua conta para continuar.";
-                if (loggedIn) profileName.value = user.name || "";
+                if (loggedIn) {
+                    profileName.value = user.name || "";
+                    profilePhone.value = user.phone || "";
+                }
             };
             const refreshUser = async () => {
                 const response = await fetch("/api/auth/me", { credentials: "include" });
@@ -228,6 +254,7 @@
                         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
                         body: JSON.stringify({
                             name: document.getElementById("auth-name").value,
+                            phone: document.getElementById("auth-phone").value,
                             email: document.getElementById("auth-email").value,
                             password: document.getElementById("auth-password").value
                         })
@@ -245,12 +272,12 @@
                 try {
                     const response = await fetch("/api/auth/profile", {
                         method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
-                        body: JSON.stringify({ name: profileName.value })
+                        body: JSON.stringify({ name: profileName.value, phone: profilePhone.value })
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || "Não foi possível salvar o nome.");
                     syncUser(data);
-                    setMessage("Nome salvo no seu perfil.");
+                    setMessage("Dados da conta salvos com sucesso.");
                 } catch (error) { setMessage(error.message); }
                 finally { profileSave.disabled = false; }
             });
