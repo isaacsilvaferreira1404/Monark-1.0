@@ -267,6 +267,9 @@ section { scroll-margin-top: 90px; }
 }
 
 .testimonials-section { padding: 88px 8% 96px; background: var(--white); }
+.proposal-card { display: flex; align-items: center; justify-content: center; color: var(--brown); text-decoration: none; transition: transform .25s ease, box-shadow .25s ease; }
+.proposal-card:hover { transform: translateY(-3px); box-shadow: 0 9px 24px rgba(67,45,31,.1); }
+.proposal-card:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
 .testimonials-section .section-heading { margin-bottom: 42px; }
 .testimonials-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; max-width: 1200px; margin: 0 auto; }
 .testimonial-card { display: flex; flex-direction: column; min-height: 270px; padding: 27px 25px; border: 1px solid #eee5dc; border-radius: 10px; background: var(--cream); box-shadow: 0 8px 24px rgba(67,45,31,.06); }
