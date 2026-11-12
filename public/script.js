@@ -7,6 +7,26 @@ const money = value => Number(value).toLocaleString("pt-BR", {
 
 document.getElementById("current-year").textContent = new Date().getFullYear();
 
+const revealElements = document.querySelectorAll(
+    ".features .feature, #cardapio .section-heading, #sobre .about-image, #sobre .about-content, #depoimentos .section-heading, #depoimentos .testimonial-card, #contato .section-heading, #contato .contact-card, .quote-section"
+);
+const revealObserver = "IntersectionObserver" in window
+    ? new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+        });
+    }, { threshold: 0.14, rootMargin: "0px 0px -32px 0px" })
+    : null;
+
+revealElements.forEach((element, index) => {
+    element.classList.add("reveal-on-scroll");
+    element.style.setProperty("--reveal-delay", `${index % 3 * 90}ms`);
+    if (revealObserver) revealObserver.observe(element);
+    else element.classList.add("is-visible");
+});
+
 /* Menu mobile */
 const menuToggle = document.getElementById("menu-toggle");
 const navbar = document.getElementById("navbar");
@@ -165,6 +185,7 @@ function renderProducts(category = "todos") {
     filtered.forEach(product => {
         const card = document.createElement("article");
         card.className = "product-card";
+        card.style.setProperty("--card-delay", `${productsGrid.children.length * 75}ms`);
 
         const imageWrap = document.createElement("div");
         imageWrap.className = "product-image";
@@ -222,14 +243,17 @@ function renderProducts(category = "todos") {
 }
 
 async function loadProducts() {
+    productsMessage.classList.add("is-loading");
     try {
         const response = await fetch(`${API_URL}/api/products`);
         if (!response.ok) throw new Error("Falha ao consultar cardápio.");
         allProducts = await response.json();
+        productsMessage.classList.remove("is-loading");
         productsMessage.textContent = "";
         renderProducts();
     } catch (error) {
         console.error(error);
+        productsMessage.classList.remove("is-loading");
         productsMessage.textContent = "Não foi possível carregar o cardápio. Confira a conexão com a API.";
     }
 }
