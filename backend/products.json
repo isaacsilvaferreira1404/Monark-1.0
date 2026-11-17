@@ -52,5 +52,149 @@
     "image": "Assests/Monark (6).jpeg",
     "category": "salgados",
     "active": true
+  },
+  {
+    "id": 7,
+    "name": "Cookie",
+    "description": "Cookie de chocolate com bordas crocantes e interior macio.",
+    "price": 14,
+    "image": "produtos/produto 1.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 8,
+    "name": "Enroladinho de Salsicha",
+    "description": "Massa dourada e crocante recheada com salsicha.",
+    "price": 9,
+    "image": "produtos/produto 2.jpg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 9,
+    "name": "Torta de Frango",
+    "description": "Massa macia com recheio cremoso de frango desfiado.",
+    "price": 14,
+    "image": "produtos/produto 3.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 10,
+    "name": "Sanduíche Natural",
+    "description": "Pão macio com frios, tomate e folhas frescas.",
+    "price": 16,
+    "image": "produtos/produto 4.jpg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 11,
+    "name": "Sonho",
+    "description": "Massa leve e dourada, recheada com creme e finalizada com açúcar.",
+    "price": 15,
+    "image": "produtos/produto 5.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 12,
+    "name": "Torta de Laranja",
+    "description": "Fatia cremosa de laranja sobre base crocante, com toque cítrico.",
+    "price": 14,
+    "image": "produtos/produto 6.jpg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 13,
+    "name": "Donuts",
+    "description": "Massa macia em formato clássico, com cobertura doce.",
+    "price": 14,
+    "image": "produtos/produto 7.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 14,
+    "name": "Quiche",
+    "description": "Massa amanteigada com recheio cremoso de queijo e ervas.",
+    "price": 14,
+    "image": "produtos/produto 8.jpg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 15,
+    "name": "Brownie",
+    "description": "Brownie de chocolate com massa úmida e sabor intenso.",
+    "price": 14,
+    "image": "produtos/produto 9.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 16,
+    "name": "Torta de Limão",
+    "description": "Creme de limão sobre base crocante, equilibrando acidez e doçura.",
+    "price": 16,
+    "image": "produtos/produto 10.jpg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 17,
+    "name": "Bolo de Cenoura",
+    "description": "Bolo de cenoura fofinho com cobertura de chocolate.",
+    "price": 12,
+    "image": "produtos/produto 11.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 18,
+    "name": "Pão na Chapa",
+    "description": "Pão dourado na chapa, servido com manteiga derretida.",
+    "price": 10,
+    "image": "produtos/produto 12.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 19,
+    "name": "Misto Quente",
+    "description": "Pão tostado recheado com queijo derretido e presunto.",
+    "price": 16,
+    "image": "produtos/produto 13.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 20,
+    "name": "Croissant",
+    "description": "Massa folhada leve e dourada, com camadas crocantes.",
+    "price": 11,
+    "image": "produtos/produto 14.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 21,
+    "name": "Coxinha",
+    "description": "Massa crocante por fora, recheada com frango temperado.",
+    "price": 9,
+    "image": "produtos/produto 15.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 22,
+    "name": "Pudim",
+    "description": "Pudim cremoso de leite condensado com calda de caramelo.",
+    "price": 22,
+    "image": "produtos/produto 16.jpeg",
+    "category": "doces",
+    "active": true
   }
 ]
