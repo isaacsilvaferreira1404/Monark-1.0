@@ -1,56 +1,146 @@
 [
   {
     "id": 1,
-    "name": "Espresso Monark",
-    "description": "Café intenso, encorpado e com aroma marcante.",
+    "name": "Cookies",
+    "description": "Cookie crocante por fora e macio por dentro, com sabor irresistível de chocolate e baunilha.",
     "price": 8,
-    "image": "Assests/Monark (6).jpeg",
-    "category": "cafes",
+    "image": "produtos/produto 1.jpeg",
+    "category": "doces",
     "active": true
   },
   {
     "id": 2,
-    "name": "Cappuccino",
-    "description": "Café com leite cremoso e uma delicada camada de espuma.",
-    "price": 13,
-    "image": "Assests/Monark (2).jpeg",
-    "category": "cafes",
+    "name": "Enroladinho de Salsicha",
+    "description": "Salsicha envolta em massa macia e dourada, ideal para um lanche rápido e saboroso.",
+    "price": 12,
+    "image": "produtos/produto 2.jpg",
+    "category": "salgados",
     "active": true
   },
   {
     "id": 3,
-    "name": "Bolo de chocolate",
-    "description": "Massa macia com recheio de chocolate.",
-    "price": 12,
-    "image": "Assests/Monark (3).jpeg",
-    "category": "doces",
+    "name": "Torta de Frango",
+    "description": "Receita caseira com frango desfiado, cremosidade e massa crocante em cada mordida.",
+    "price": 18,
+    "image": "produtos/produto 3.jpeg",
+    "category": "salgados",
     "active": true
   },
   {
     "id": 4,
-    "name": "Croissant doce",
-    "description": "Massa folhada e crocante com recheio especial.",
-    "price": 11,
-    "image": "Assests/Monark (4).jpeg",
-    "category": "doces",
+    "name": "Sancuiche Natural",
+    "description": "Pão fresquinho com recheio natural e leve, uma opção prática e saborosa para o dia a dia.",
+    "price": 16,
+    "image": "produtos/produto 4.jpg",
+    "category": "salgados",
     "active": true
   },
   {
     "id": 5,
-    "name": "Cold Coffee",
-    "description": "Café gelado, refrescante e equilibrado.",
-    "price": 14,
-    "image": "Assests/Monark (5).jpeg",
-    "category": "bebidas",
+    "name": "Sonho",
+    "description": "Rosquinha macia e fofa, polvilhada com açúcar e com recheio delicado.",
+    "price": 10,
+    "image": "produtos/produto 5.jpeg",
+    "category": "doces",
     "active": true
   },
   {
     "id": 6,
-    "name": "Sanduíche artesanal",
-    "description": "Pão macio com queijo e ingredientes selecionados.",
-    "price": 16,
-    "image": "Assests/Monark (6).jpeg",
+    "name": "Torta de Laranja",
+    "description": "Torta cítrica com massa leve e um recheio cremoso de laranja bem equilibrado.",
+    "price": 15,
+    "image": "produtos/produto 6.jpg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 7,
+    "name": "Dunuts",
+    "description": "Donuts fofos, dourados e irresistíveis, com textura macia e cobertura doce.",
+    "price": 14,
+    "image": "produtos/produto 7.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 8,
+    "name": "Quiche",
+    "description": "Quiche com massa crocante e recheio saboroso, perfeito para um lanche mais completo.",
+    "price": 18,
+    "image": "produtos/produto 8.jpg",
     "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 9,
+    "name": "Brownie",
+    "description": "Brownie denso e úmido, com chocolate intenso e textura que derrete na boca.",
+    "price": 12,
+    "image": "produtos/produto 9.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 10,
+    "name": "Torta de Limão",
+    "description": "Torta fresca de limão com cremosidade delicada e toque cítrico bem equilibrado.",
+    "price": 15,
+    "image": "produtos/produto 10.jpg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 11,
+    "name": "Bolo de Cenoura",
+    "description": "Bolo úmido de cenoura com cobertura cremosa e sabor clássico e acolhedor.",
+    "price": 12,
+    "image": "produtos/produto 11.jpeg",
+    "category": "doces",
+    "active": true
+  },
+  {
+    "id": 12,
+    "name": "Pão na Chapa",
+    "description": "Pão tostado na chapa com manteiga, aroma levemente dourado e sabor marcante.",
+    "price": 11,
+    "image": "produtos/produto 12.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 13,
+    "name": "Misto Quente",
+    "description": "Sanduíche quente com queijo, presunto e pão tostado, um clássico irresistível.",
+    "price": 15,
+    "image": "produtos/produto 13.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 14,
+    "name": "Croassaint",
+    "description": "Croissant folhado e amanteigado, crocante por fora e macio por dentro.",
+    "price": 13,
+    "image": "produtos/produto 14.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 15,
+    "name": "Coxinha",
+    "description": "Coxinha crocante por fora e recheada com frango desfiado, uma opção tradicional e saborosa.",
+    "price": 12,
+    "image": "produtos/produto 15.jpeg",
+    "category": "salgados",
+    "active": true
+  },
+  {
+    "id": 16,
+    "name": "Pudim",
+    "description": "Pudim clássico e cremoso, com textura suave e sabor caramelizado de dar água na boca.",
+    "price": 14,
+    "image": "produtos/produto 16.jpeg",
+    "category": "doces",
     "active": true
   }
 ]

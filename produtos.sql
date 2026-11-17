@@ -8,96 +8,117 @@ SELECT
     v.category
 FROM (VALUES
 
-    -- CAFÉS
     (
-        'Espresso Monark',
-        'Café intenso, encorpado e com aroma marcante.',
+        'Cookies',
+        'Cookie crocante por fora e macio por dentro, com sabor irresistível de chocolate e baunilha.',
         8.00,
-        "Assets/monark (3).jpeg",
-        'cafes'
+        'produtos/produto 1.jpeg',
+        'doces'
     ),
     (
-        'Cappuccino',
-        'Café com leite cremoso e uma delicada camada de espuma.',
-        13.00,
-        'Assets/cafe2.jpg',
-        'cafes'
-    ),
-    (
-        'Café Latte',
-        'Espresso equilibrado com leite vaporizado.',
+        'Enroladinho de Salsicha',
+        'Salsicha envolta em massa macia e dourada, ideal para um lanche rápido e saboroso.',
         12.00,
-        'Assets/cafe3.jpg',
-        'cafes'
+        'produtos/produto 2.jpg',
+        'salgados'
     ),
-
-    -- BEBIDAS
     (
-        'Cold Coffee',
-        'Café gelado, refrescante e equilibrado.',
+        'Torta de Frango',
+        'Receita caseira com frango desfiado, cremosidade e massa crocante em cada mordida.',
+        18.00,
+        'produtos/produto 3.jpeg',
+        'salgados'
+    ),
+    (
+        'Sancuiche Natural',
+        'Pão fresquinho com recheio natural e leve, uma opção prática e saborosa para o dia a dia.',
+        16.00,
+        'produtos/produto 4.jpg',
+        'salgados'
+    ),
+    (
+        'Sonho',
+        'Rosquinha macia e fofa, polvilhada com açúcar e com recheio delicado.',
+        10.00,
+        'produtos/produto 5.jpeg',
+        'doces'
+    ),
+    (
+        'Torta de Laranja',
+        'Torta cítrica com massa leve e um recheio cremoso de laranja bem equilibrado.',
+        15.00,
+        'produtos/produto 6.jpg',
+        'doces'
+    ),
+    (
+        'Dunuts',
+        'Donuts fofos, dourados e irresistíveis, com textura macia e cobertura doce.',
         14.00,
-        'Assets/bebida1.jpg',
-        'bebidas'
-    ),
-    (
-        'Chocolate Quente',
-        'Chocolate cremoso, perfeito para dias mais frios.',
-        12.00,
-        'Assets/bebida2.jpg',
-        'bebidas'
-    ),
-    (
-        'Suco Natural',
-        'Suco natural preparado com frutas selecionadas.',
-        9.00,
-        'Assets/bebida3.jpg',
-        'bebidas'
-    ),
-
-    -- DOCES
-    (
-        'Bolo de Chocolate',
-        'Massa macia com recheio especial de chocolate.',
-        12.00,
-        'Assets/doce1.jpg',
+        'produtos/produto 7.jpeg',
         'doces'
     ),
     (
-        'Croissant Doce',
-        'Massa folhada e crocante com recheio especial.',
-        11.00,
-        'Assets/doce2.jpg',
-        'doces'
+        'Quiche',
+        'Quiche com massa crocante e recheio saboroso, perfeito para um lanche mais completo.',
+        18.00,
+        'produtos/produto 8.jpg',
+        'salgados'
     ),
     (
         'Brownie',
-        'Brownie artesanal com chocolate meio amargo.',
-        10.00,
-        'Assets/doce3.jpg',
+        'Brownie denso e úmido, com chocolate intenso e textura que derrete na boca.',
+        12.00,
+        'produtos/produto 9.jpeg',
         'doces'
     ),
-
-    -- SALGADOS
     (
-        'Sanduíche Artesanal',
-        'Pão macio com queijo e ingredientes selecionados.',
-        16.00,
-        'Assets/salgado1.jpg',
+        'Torta de Limão',
+        'Torta fresca de limão com cremosidade delicada e toque cítrico bem equilibrado.',
+        15.00,
+        'produtos/produto 10.jpg',
+        'doces'
+    ),
+    (
+        'Bolo de Cenoura',
+        'Bolo úmido de cenoura com cobertura cremosa e sabor clássico e acolhedor.',
+        12.00,
+        'produtos/produto 11.jpeg',
+        'doces'
+    ),
+    (
+        'Pão na Chapa',
+        'Pão tostado na chapa com manteiga, aroma levemente dourado e sabor marcante.',
+        11.00,
+        'produtos/produto 12.jpeg',
         'salgados'
     ),
     (
-        'Pão de Queijo',
-        'Pão de queijo quentinho, macio por dentro e crocante por fora.',
-        7.00,
-        'Assets/salgado2.jpg',
+        'Misto Quente',
+        'Sanduíche quente com queijo, presunto e pão tostado, um clássico irresistível.',
+        15.00,
+        'produtos/produto 13.jpeg',
         'salgados'
     ),
     (
-        'Croissant Salgado',
-        'Croissant folhado com recheio de queijo.',
+        'Croassaint',
+        'Croissant folhado e amanteigado, crocante por fora e macio por dentro.',
         13.00,
-        'Assets/salgado3.jpg',
+        'produtos/produto 14.jpeg',
         'salgados'
+    ),
+    (
+        'Coxinha',
+        'Coxinha crocante por fora e recheada com frango desfiado, uma opção tradicional e saborosa.',
+        12.00,
+        'produtos/produto 15.jpeg',
+        'salgados'
+    ),
+    (
+        'Pudim',
+        'Pudim clássico e cremoso, com textura suave e sabor caramelizado de dar água na boca.',
+        14.00,
+        'produtos/produto 16.jpeg',
+        'doces'
     )
 
 ) AS v(name, description, price, image, category)
