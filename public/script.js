@@ -160,6 +160,7 @@ function renderCart() {
 const productsGrid = document.getElementById("products-grid");
 const productsMessage = document.getElementById("products-message");
 let allProducts = [];
+let activeCategory = "todos";
 const categoryNames = {
     cafes: "Cafés",
     bebidas: "Bebidas",
@@ -167,7 +168,8 @@ const categoryNames = {
     salgados: "Salgados"
 };
 
-function renderProducts(category = "todos") {
+function renderProducts(category = activeCategory) {
+    activeCategory = category;
     productsGrid.replaceChildren();
 
     const filtered = allProducts.filter(product =>
@@ -250,7 +252,7 @@ async function loadProducts() {
         allProducts = await response.json();
         productsMessage.classList.remove("is-loading");
         productsMessage.textContent = "";
-        renderProducts();
+        renderProducts(activeCategory);
     } catch (error) {
         console.error(error);
         productsMessage.classList.remove("is-loading");
@@ -265,7 +267,8 @@ document.querySelectorAll(".filter-button").forEach(button => {
             item.classList.remove("active")
         );
         button.classList.add("active");
-        renderProducts(button.dataset.filter);
+        activeCategory = button.dataset.filter;
+        renderProducts(activeCategory);
     });
 });
 
@@ -360,4 +363,5 @@ checkoutForm.addEventListener("submit", async event => {
 });
 
 renderCart();
+window.addEventListener("monark:products-updated", loadProducts);
 loadProducts();
