@@ -70,11 +70,12 @@ if (serviceAccountJson) {
     credential = hasApplicationCredentials ? applicationDefault() : undefined;
 }
 
-const firebaseApp = getApps().length
+export const firebaseApp = getApps().length
     ? getApps()[0]
     : initializeApp({
         ...(credential ? { credential } : {}),
         projectId
     });
 
+export const firebaseProjectId = firebaseApp.options.projectId || projectId;
 export const db = getFirestore(firebaseApp);

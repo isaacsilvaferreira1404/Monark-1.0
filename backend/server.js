@@ -7,7 +7,9 @@ import crypto from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FieldValue } from "firebase-admin/firestore";
-import { db } from "./firebase.js";
+import { getStorage } from "firebase-admin/storage";
+import multer from "multer";
+import { db, firebaseApp, firebaseProjectId } from "./firebase.js";
 
 dotenv.config();
 
@@ -30,7 +32,13 @@ const webhookUrl = process.env.WEBHOOK_URL ||
 
 // Vercel terminates the proxy before Express; trust its single forwarded hop for rate limiting.
 app.set("trust proxy", 1);
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            imgSrc: ["'self'", "data:", "blob:", "https://firebasestorage.googleapis.com", "https://images.unsplash.com"]
+        }
+    }
+}));
 app.use(cors({
     origin: frontendOrigin,
     credentials: true,
@@ -54,7 +62,32 @@ const authLimiter = rateLimit({
     legacyHeaders: false
 });
 
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false
+});
+
 const sessionCookie = "monark_session";
+const administratorEmail = "isaacsilvaferreira1234@gmail.com";
+const productCategories = new Set(["cafes", "bebidas", "doces", "salgados"]);
+const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const productImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 4 * 1024 * 1024, files: 1, fields: 4, fieldSize: 16 * 1024, parts: 5 },
+    fileFilter: (_req, file, callback) => callback(null, acceptedImageTypes.has(file.mimetype))
+});
+const handleProductImageUpload = (req, res, next) => {
+    productImageUpload.single("image")(req, res, error => {
+        if (!error) return next();
+        const fileTooLarge = error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE";
+        const message = fileTooLarge
+            ? "A imagem deve ter no máximo 4 MB."
+            : "Não foi possível processar a imagem enviada.";
+        return res.status(fileTooLarge ? 413 : 400).json({ error: message });
+    });
+};
 const storeCoordinates = { latitude: -23.4965617, longitude: -46.8532208 };
 const whatsappNumber = "5511989480983";
 const deliveryBaseFee = 5;
@@ -103,6 +136,19 @@ const getSession = async req => {
     return session.data();
 };
 
+const requireAdministrator = async (req, res, next) => {
+    try {
+        const session = await getSession(req);
+        if (!session) return res.status(401).json({ error: "Entre na conta do administrador para cadastrar produtos." });
+        if (session.email !== administratorEmail) return res.status(403).json({ error: "Apenas o administrador pode cadastrar produtos." });
+        req.administratorEmail = session.email;
+        next();
+    } catch (error) {
+        console.error("Erro ao validar administrador:", error);
+        res.status(500).json({ error: "Não foi possível validar a conta do administrador." });
+    }
+};
+
 app.post("/api/auth/register", authLimiter, async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const phone = String(req.body?.phone || "").replace(/\D/g, "");
@@ -110,6 +156,9 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     const password = String(req.body?.password || "");
     if (name.length < 2 || name.length > 80 || phone.length < 10 || phone.length > 15 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || password.length > 128) {
         return res.status(400).json({ error: "Informe nome, telefone válido, e-mail válido e senha com pelo menos 8 caracteres." });
+    }
+    if (email === administratorEmail) {
+        return res.status(403).json({ error: "O cadastro público da conta administrativa está bloqueado. Entre com a conta já cadastrada." });
     }
     try {
         const userRef = db.collection("users").doc(email);
@@ -145,7 +194,12 @@ app.get("/api/auth/me", async (req, res) => {
         const session = await getSession(req);
         if (!session) return res.json({ user: null });
         const user = await db.collection("users").doc(session.email).get();
-        res.json({ user: user.exists ? { email: session.email, name: user.data().name || "", phone: user.data().phone || "" } : null });
+        res.json({ user: user.exists ? {
+            email: session.email,
+            name: user.data().name || "",
+            phone: user.data().phone || "",
+            isAdmin: session.email === administratorEmail
+        } : null });
     } catch { res.status(500).json({ error: "Não foi possível verificar a sessão." }); }
 });
 
@@ -157,7 +211,7 @@ app.patch("/api/auth/profile", async (req, res) => {
         if (!session) return res.status(401).json({ error: "Faça login para editar seu perfil." });
         if (name.length < 2 || name.length > 80 || phone.length < 10 || phone.length > 15) return res.status(400).json({ error: "Informe nome e telefone válidos." });
         await db.collection("users").doc(session.email).set({ name, phone, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-        res.json({ email: session.email, name, phone });
+        res.json({ email: session.email, name, phone, isAdmin: session.email === administratorEmail });
     } catch (error) {
         console.error("Erro ao atualizar perfil:", error);
         res.status(500).json({ error: "Não foi possível atualizar seu perfil." });
@@ -240,6 +294,124 @@ app.get("/api/products", async (req, res) => {
     } catch (error) {
         console.error("Erro ao listar produtos:", error);
         res.status(500).json({ error: "Não foi possível carregar o cardápio." });
+    }
+});
+
+const detectImageFormat = buffer => {
+    if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+        return { mimeType: "image/jpeg", extension: "jpg" };
+    }
+    if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+        return { mimeType: "image/png", extension: "png" };
+    }
+    if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+        return { mimeType: "image/webp", extension: "webp" };
+    }
+    return null;
+};
+
+const uploadProductImage = async (image, imageFormat) => {
+    const configuredBucket = process.env.FIREBASE_STORAGE_BUCKET?.replace(/^gs:\/\//, "").trim();
+    const bucketNames = configuredBucket
+        ? [configuredBucket]
+        : [`${firebaseProjectId}.firebasestorage.app`, `${firebaseProjectId}.appspot.com`];
+    const objectName = `products/${crypto.randomUUID()}.${imageFormat.extension}`;
+    const downloadToken = crypto.randomUUID();
+    let lastError;
+
+    for (const bucketName of bucketNames) {
+        const bucket = getStorage(firebaseApp).bucket(bucketName);
+        const file = bucket.file(objectName);
+        try {
+            await file.save(image.buffer, {
+                resumable: false,
+                metadata: {
+                    contentType: imageFormat.mimeType,
+                    cacheControl: "public, max-age=31536000, immutable",
+                    metadata: { firebaseStorageDownloadTokens: downloadToken }
+                }
+            });
+            return {
+                file,
+                imageUrl: `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectName)}?alt=media&token=${downloadToken}`
+            };
+        } catch (error) {
+            lastError = error;
+            const missingBucket = Number(error.code) === 404 || /bucket.*not found|bucket.*does not exist/i.test(error.message || "");
+            if (!configuredBucket && missingBucket) continue;
+            throw error;
+        }
+    }
+
+    throw lastError || new Error("Nenhum bucket do Firebase Storage foi encontrado.");
+};
+
+const saveProduct = async product => db.runTransaction(async transaction => {
+    const counterRef = db.collection("counters").doc("products");
+    const [counterSnapshot, latestProductSnapshot] = await Promise.all([
+        transaction.get(counterRef),
+        transaction.get(db.collection("products").orderBy("id", "desc").limit(1))
+    ]);
+    const currentCounter = Number(counterSnapshot.data()?.nextId) || 1;
+    const latestId = latestProductSnapshot.empty ? 0 : Number(latestProductSnapshot.docs[0].get("id")) || 0;
+    const id = Math.max(currentCounter, latestId + 1);
+    const productRef = db.collection("products").doc(String(id));
+    const timestamp = FieldValue.serverTimestamp();
+
+    transaction.create(productRef, {
+        ...product,
+        id,
+        active: true,
+        createdAt: timestamp,
+        updatedAt: timestamp
+    });
+    transaction.set(counterRef, { nextId: id + 1, updatedAt: timestamp }, { merge: true });
+    return { ...product, id, active: true };
+});
+
+app.post("/api/admin/products", adminLimiter, requireAdministrator, handleProductImageUpload, async (req, res) => {
+    const name = String(req.body?.name || "").trim();
+    const description = String(req.body?.description || "").trim();
+    const rawPrice = String(req.body?.price || "").trim();
+    const category = String(req.body?.category || "").trim();
+    const price = Number(rawPrice.replace(",", "."));
+
+    if (name.length < 2 || name.length > 100) {
+        return res.status(400).json({ error: "O nome do produto deve ter entre 2 e 100 caracteres." });
+    }
+    if (!description || description.length > 500) {
+        return res.status(400).json({ error: "Informe uma descrição com até 500 caracteres." });
+    }
+    if (!/^\d{1,6}(?:[.,]\d{1,2})?$/.test(rawPrice) || !Number.isFinite(price) || price <= 0 || price > 100000) {
+        return res.status(400).json({ error: "Informe um preço válido entre R$ 0,01 e R$ 100.000,00." });
+    }
+    if (!productCategories.has(category)) {
+        return res.status(400).json({ error: "Selecione uma categoria válida." });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: "Selecione uma imagem JPEG, PNG ou WebP de até 4 MB." });
+    }
+
+    const imageFormat = detectImageFormat(req.file.buffer);
+    if (!imageFormat || imageFormat.mimeType !== req.file.mimetype) {
+        return res.status(400).json({ error: "O arquivo selecionado não é uma imagem JPEG, PNG ou WebP válida." });
+    }
+
+    let storedImage;
+    try {
+        storedImage = await uploadProductImage(req.file, imageFormat);
+        const product = await saveProduct({
+            name,
+            description,
+            price: Number(price.toFixed(2)),
+            image: storedImage.imageUrl,
+            category
+        });
+        res.status(201).json({ product });
+    } catch (error) {
+        if (storedImage) await storedImage.file.delete({ ignoreNotFound: true }).catch(() => {});
+        console.error("Erro ao cadastrar produto:", error);
+        res.status(500).json({ error: "Não foi possível cadastrar o produto. Verifique a conexão com o Firebase e tente novamente." });
     }
 });
 

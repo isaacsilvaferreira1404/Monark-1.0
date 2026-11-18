@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="config.js" defer></script>
     <script src="script.js" defer></script>
+    <script src="account.js" defer></script>
 </head>
 <body>
     <header class="header">
@@ -164,8 +165,42 @@
                 <label for="profile-phone">Telefone</label>
                 <input id="profile-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" required>
                 <button class="button secondary" type="button" id="profile-save">Salvar alterações</button>
+                <button class="button primary" type="button" id="admin-product-open" hidden>Cadastrar produto</button>
                 <button class="auth-switch" type="button" id="auth-logout">Sair da conta</button>
             </div>
+            <section class="admin-product-panel" id="admin-product-panel" hidden aria-label="Cadastro de produto">
+                <button class="admin-product-back" id="admin-product-back" type="button">← Minha conta</button>
+                <h3>Detalhes do produto</h3>
+                <form id="admin-product-form">
+                    <label for="admin-product-name">Nome do produto</label>
+                    <input id="admin-product-name" name="name" type="text" maxlength="100" autocomplete="off" required>
+
+                    <label for="admin-product-description">Descrição</label>
+                    <textarea id="admin-product-description" name="description" rows="4" maxlength="500" required></textarea>
+
+                    <label for="admin-product-price">Preço (R$)</label>
+                    <input id="admin-product-price" name="price" type="number" min="0.01" max="100000" step="0.01" inputmode="decimal" placeholder="Ex.: 12,90" required>
+
+                    <label for="admin-product-category">Categoria</label>
+                    <select id="admin-product-category" name="category" required>
+                        <option value="">Selecione uma categoria</option>
+                        <option value="cafes">Cafés</option>
+                        <option value="bebidas">Bebidas</option>
+                        <option value="doces">Doces</option>
+                        <option value="salgados">Salgados</option>
+                    </select>
+
+                    <label for="admin-product-image">Imagem do produto</label>
+                    <input id="admin-product-image" name="image" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <div class="admin-image-preview" aria-live="polite">
+                        <img id="admin-product-image-preview" alt="Pré-visualização da imagem do produto" hidden>
+                        <span id="admin-product-image-placeholder">A prévia da imagem aparecerá aqui.</span>
+                    </div>
+
+                    <p id="admin-product-feedback" class="checkout-message" role="status" aria-live="polite"></p>
+                    <button class="button primary" id="admin-product-submit" type="submit">Cadastrar produto</button>
+                </form>
+            </section>
             <p id="auth-message" class="checkout-message" role="status"></p>
         </section>
     </div>
@@ -213,106 +248,6 @@
         </aside>
     </div>
 
-    <script>
-        (() => {
-            const overlay = document.getElementById("auth-overlay");
-            const form = document.getElementById("auth-form");
-            const submit = document.getElementById("auth-submit");
-            const message = document.getElementById("auth-message");
-            const title = document.getElementById("auth-title");
-            const switchButton = document.getElementById("auth-switch");
-            const openButton = document.getElementById("auth-open");
-            const profileControls = document.getElementById("profile-controls");
-            const profileName = document.getElementById("profile-name");
-            const profilePhone = document.getElementById("profile-phone");
-            const profileSave = document.getElementById("profile-save");
-            const logoutButton = document.getElementById("auth-logout");
-            let registerMode = false;
-            let currentUser = null;
 
-            const setMessage = text => { message.textContent = text; };
-            const open = () => {
-                overlay.setAttribute("aria-hidden", "false");
-                if (currentUser) profileName.focus();
-                else document.getElementById("auth-email").focus();
-            };
-            const close = () => { overlay.setAttribute("aria-hidden", "true"); setMessage(""); };
-            const syncMode = () => {
-                title.textContent = registerMode ? "Crie sua conta" : "Entre na sua conta";
-                submit.textContent = registerMode ? "Criar conta" : "Entrar";
-                switchButton.textContent = registerMode ? "Já tenho uma conta" : "Ainda não tenho conta";
-                document.querySelectorAll(".register-only").forEach(field => {
-                    field.hidden = !registerMode;
-                    field.required = registerMode;
-                });
-            };
-            const syncUser = user => {
-                currentUser = user;
-                const loggedIn = Boolean(user);
-                form.hidden = loggedIn;
-                switchButton.hidden = loggedIn;
-                profileControls.hidden = !loggedIn;
-                openButton.textContent = loggedIn ? "Minha conta" : "Entrar";
-                document.getElementById("checkout-account-note").textContent = loggedIn
-                    ? `Pedido em nome de ${user.name || "seu perfil"}.`
-                    : "Entre na sua conta para continuar.";
-                if (loggedIn) {
-                    profileName.value = user.name || "";
-                    profilePhone.value = user.phone || "";
-                }
-            };
-            const refreshUser = async () => {
-                const response = await fetch("/api/auth/me", { credentials: "include" });
-                if (response.ok) syncUser((await response.json()).user);
-            };
-            openButton.addEventListener("click", open);
-            document.getElementById("auth-close").addEventListener("click", close);
-            overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
-            switchButton.addEventListener("click", () => { registerMode = !registerMode; syncMode(); });
-            form.addEventListener("submit", async event => {
-                event.preventDefault();
-                submit.disabled = true;
-                setMessage("Aguarde...");
-                try {
-                    const response = await fetch(`/api/auth/${registerMode ? "register" : "login"}`, {
-                        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-                        body: JSON.stringify({
-                            name: document.getElementById("auth-name").value,
-                            phone: document.getElementById("auth-phone").value,
-                            email: document.getElementById("auth-email").value,
-                            password: document.getElementById("auth-password").value
-                        })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || "Não foi possível concluir.");
-                    await refreshUser();
-                    setMessage(registerMode ? "Conta criada com sucesso." : "Login realizado com sucesso.");
-                    setTimeout(close, 900);
-                } catch (error) { setMessage(error.message); }
-                finally { submit.disabled = false; }
-            });
-            profileSave.addEventListener("click", async () => {
-                profileSave.disabled = true;
-                try {
-                    const response = await fetch("/api/auth/profile", {
-                        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
-                        body: JSON.stringify({ name: profileName.value, phone: profilePhone.value })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || "Não foi possível salvar o nome.");
-                    syncUser(data);
-                    setMessage("Dados da conta salvos com sucesso.");
-                } catch (error) { setMessage(error.message); }
-                finally { profileSave.disabled = false; }
-            });
-            logoutButton.addEventListener("click", async () => {
-                await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-                syncUser(null);
-                close();
-            });
-            syncMode();
-            refreshUser().catch(() => {});
-        })();
-    </script>
 </body>
 </html>
