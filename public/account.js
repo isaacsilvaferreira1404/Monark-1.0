@@ -18,7 +18,7 @@
     const adminProductForm = document.getElementById("admin-product-form");
     const adminProductSubmit = document.getElementById("admin-product-submit");
     const adminProductFeedback = document.getElementById("admin-product-feedback");
-    const productImageInput = document.getElementById("admin-product-image");
+    const productImageInput = document.getElementById("admin-product-image-url");
     const productImagePreview = document.getElementById("admin-product-image-preview");
     const productImagePlaceholder = document.getElementById("admin-product-image-placeholder");
     const apiUrl = window.MONARK_API_URL || "";
@@ -183,20 +183,20 @@
         adminProductOpen.focus();
     });
 
-    productImageInput.addEventListener("change", () => {
+    productImageInput.addEventListener("input", () => {
         setProductFeedback("");
         clearProductImagePreview();
-        const image = productImageInput.files?.[0];
-        if (!image) return;
-        if (!acceptedImageTypes.has(image.type) || image.size > 4 * 1024 * 1024) {
-            productImageInput.value = "";
-            setProductFeedback("Escolha uma imagem JPEG, PNG ou WebP de até 4 MB.");
-            return;
-        }
-        productImagePreviewUrl = URL.createObjectURL(image);
-        productImagePreview.src = productImagePreviewUrl;
-        productImagePreview.hidden = false;
-        productImagePlaceholder.hidden = true;
+        try {
+            const url = new URL(productImageInput.value.trim());
+            if (url.protocol !== "https:") return;
+            productImagePreview.src = url.href;
+            productImagePreview.hidden = false;
+            productImagePlaceholder.hidden = true;
+        } catch { /* Aguarda um endereço válido. */ }
+    });
+    productImagePreview.addEventListener("error", () => {
+        productImagePreview.hidden = true;
+        productImagePlaceholder.hidden = false;
     });
 
     adminProductForm.addEventListener("submit", async event => {
@@ -209,12 +209,13 @@
         if (!adminProductForm.reportValidity()) return;
         adminProductSubmit.disabled = true;
         adminProductSubmit.textContent = "Enviando produto...";
-        setProductFeedback("Enviando imagem e salvando no Firebase...");
+        setProductFeedback("Salvando produto no cardápio...");
         try {
             const response = await fetch(`${apiUrl}/api/admin/products`, {
                 method: "POST",
                 credentials: "include",
-                body: new FormData(adminProductForm)
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(Object.fromEntries(new FormData(adminProductForm)))
             });
             const data = await response.json().catch(() => ({}));
             if (response.status === 401 || response.status === 403) {
