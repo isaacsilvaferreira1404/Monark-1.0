@@ -70,7 +70,7 @@ const adminLimiter = rateLimit({
 });
 
 const sessionCookie = "monark_session";
-const administratorEmail = "isaacsilvaferreira1234@gmail.com";
+const administratorEmail = (process.env.ADMIN_EMAIL || "isaacsilvaferreira1234@gmail.com").trim().toLowerCase();
 const productCategories = new Set(["cafes", "bebidas", "doces", "salgados"]);
 const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const productImageUpload = multer({
@@ -141,6 +141,12 @@ const requireAdministrator = async (req, res, next) => {
         const session = await getSession(req);
         if (!session) return res.status(401).json({ error: "Entre na conta do administrador para cadastrar produtos." });
         if (session.email !== administratorEmail) return res.status(403).json({ error: "Apenas o administrador pode cadastrar produtos." });
+        const adminUser = await db.collection("users").doc(session.email).get();
+        if (!adminUser.exists) return res.status(403).json({ error: "A conta administrativa não está cadastrada." });
+        const requestOrigin = req.get("origin");
+        if (requestOrigin && requestOrigin !== `${req.protocol}://${req.get("host")}` && requestOrigin !== frontendOrigin) {
+            return res.status(403).json({ error: "Origem da solicitação não autorizada." });
+        }
         req.administratorEmail = session.email;
         next();
     } catch (error) {
@@ -411,7 +417,10 @@ app.post("/api/admin/products", adminLimiter, requireAdministrator, handleProduc
     } catch (error) {
         if (storedImage) await storedImage.file.delete({ ignoreNotFound: true }).catch(() => {});
         console.error("Erro ao cadastrar produto:", error);
-        res.status(500).json({ error: "Não foi possível cadastrar o produto. Verifique a conexão com o Firebase e tente novamente." });
+        const storageIssue = /bucket|storage|permission|billing|not found|does not exist|404/i.test(String(error.message || ""));
+        res.status(500).json({ error: storageIssue
+            ? "Falha no Firebase Storage. Verifique se o bucket existe, se o serviço está ativo e se FIREBASE_STORAGE_BUCKET está configurado na Vercel."
+            : "Não foi possível salvar o produto no Firebase. Confira os logs do servidor." });
     }
 });
 

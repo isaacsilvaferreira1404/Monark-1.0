@@ -98,7 +98,8 @@
 
     const refreshUser = async () => {
         const response = await fetch(`${apiUrl}/api/auth/me`, { credentials: "include" });
-        if (response.ok) syncUser((await response.json()).user);
+        if (!response.ok) throw new Error("Não foi possível verificar a sessão.");
+        syncUser((await response.json()).user);
     };
 
     openButton.addEventListener("click", open);
@@ -205,6 +206,7 @@
             return;
         }
 
+        if (!adminProductForm.reportValidity()) return;
         adminProductSubmit.disabled = true;
         adminProductSubmit.textContent = "Enviando produto...";
         setProductFeedback("Enviando imagem e salvando no Firebase...");
@@ -214,7 +216,11 @@
                 credentials: "include",
                 body: new FormData(adminProductForm)
             });
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401 || response.status === 403) {
+                await refreshUser().catch(() => syncUser(null));
+                throw new Error("Acesso restrito: entre com a conta do administrador.");
+            }
             if (!response.ok) throw new Error(data.error || "Não foi possível cadastrar o produto.");
             adminProductForm.reset();
             clearProductImagePreview();
