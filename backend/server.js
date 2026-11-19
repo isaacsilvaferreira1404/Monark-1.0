@@ -7,9 +7,8 @@ import crypto from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FieldValue } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
 import multer from "multer";
-import { db, firebaseApp, firebaseProjectId } from "./firebase.js";
+import { db } from "./firebase.js";
 
 dotenv.config();
 
@@ -316,40 +315,28 @@ const detectImageFormat = buffer => {
     return null;
 };
 
+const githubRepo = "isaacsilvaferreira1404/Monark-1.0";
 const uploadProductImage = async (image, imageFormat) => {
-    const configuredBucket = process.env.FIREBASE_STORAGE_BUCKET?.replace(/^gs:\/\//, "").trim();
-    const bucketNames = configuredBucket
-        ? [configuredBucket]
-        : [`${firebaseProjectId}.firebasestorage.app`, `${firebaseProjectId}.appspot.com`];
-    const objectName = `products/${crypto.randomUUID()}.${imageFormat.extension}`;
-    const downloadToken = crypto.randomUUID();
-    let lastError;
-
-    for (const bucketName of bucketNames) {
-        const bucket = getStorage(firebaseApp).bucket(bucketName);
-        const file = bucket.file(objectName);
-        try {
-            await file.save(image.buffer, {
-                resumable: false,
-                metadata: {
-                    contentType: imageFormat.mimeType,
-                    cacheControl: "public, max-age=31536000, immutable",
-                    metadata: { firebaseStorageDownloadTokens: downloadToken }
-                }
-            });
-            return {
-                file,
-                imageUrl: `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectName)}?alt=media&token=${downloadToken}`
-            };
-        } catch (error) {
-            lastError = error;
-            const missingBucket = Number(error.code) === 404 || /bucket.*not found|bucket.*does not exist/i.test(error.message || "");
-            if (!configuredBucket && missingBucket) continue;
-            throw error;
-        }
+    const token = process.env.GITHUB_UPLOAD_TOKEN?.trim();
+    if (!token) throw new Error("GITHUB_UPLOAD_TOKEN_MISSING");
+    const path = `public/imagens-produtos/${crypto.randomUUID()}.${imageFormat.extension}`;
+    const response = await fetch(`https://api.github.com/repos/${githubRepo}/contents/${path}`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+            "User-Agent": "Monark-Cafeteria"
+        },
+        body: JSON.stringify({ message: "Adicionar imagem de produto", content: image.buffer.toString("base64"), branch: "main" }),
+        signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) {
+        console.error("GitHub upload failed:", response.status);
+        throw new Error(`GITHUB_UPLOAD_FAILED_${response.status}`);
     }
-
-    throw lastError || new Error("Nenhum bucket do Firebase Storage foi encontrado.");
+    return { imageUrl: `https://raw.githubusercontent.com/${githubRepo}/main/${path}` };
 };
 
 const saveProduct = async product => db.runTransaction(async transaction => {
@@ -375,7 +362,7 @@ const saveProduct = async product => db.runTransaction(async transaction => {
     return { ...product, id, active: true };
 });
 
-app.post("/api/admin/products", adminLimiter, requireAdministrator, async (req, res) => {
+app.post("/api/admin/products", adminLimiter, requireAdministrator, handleProductImageUpload, async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const description = String(req.body?.description || "").trim();
     const rawPrice = String(req.body?.price || "").trim();
@@ -394,30 +381,26 @@ app.post("/api/admin/products", adminLimiter, requireAdministrator, async (req, 
     if (!productCategories.has(category)) {
         return res.status(400).json({ error: "Selecione uma categoria válida." });
     }
-    const rawImageUrl = String(req.body?.imageUrl || "").trim();
-    let imageUrl;
-    try {
-        const parsed = new URL(rawImageUrl);
-        if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password ||
-            /^(localhost|127\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|169\\.254\\.|0\\.)/i.test(parsed.hostname) ||
-            rawImageUrl.length > 1500) throw new Error("invalid");
-        imageUrl = parsed.href;
-    } catch {
-        return res.status(400).json({ error: "Informe o link HTTPS público de uma imagem do produto." });
+    if (!req.file) return res.status(400).json({ error: "Selecione uma imagem JPEG, PNG ou WebP de até 4 MB." });
+    const imageFormat = detectImageFormat(req.file.buffer);
+    if (!imageFormat || imageFormat.mimeType !== req.file.mimetype) {
+        return res.status(400).json({ error: "A imagem enviada não é um JPEG, PNG ou WebP válido." });
     }
-
+    if (!process.env.GITHUB_UPLOAD_TOKEN?.trim()) {
+        return res.status(503).json({ error: "Configure GITHUB_UPLOAD_TOKEN na Vercel para enviar imagens ao GitHub." });
+    }
     try {
+        const storedImage = await uploadProductImage(req.file, imageFormat);
         const product = await saveProduct({
-            name,
-            description,
-            price: Number(price.toFixed(2)),
-            image: imageUrl,
-            category
+            name, description, price: Number(price.toFixed(2)), image: storedImage.imageUrl, category
         });
         res.status(201).json({ product });
     } catch (error) {
         console.error("Erro ao cadastrar produto:", error);
-        res.status(500).json({ error: "Não foi possível salvar o produto no Firestore. Confira os logs do servidor." });
+        const githubError = /^GITHUB_UPLOAD_FAILED_(\\d+)$/.exec(error.message || "");
+        res.status(500).json({ error: githubError
+            ? "Falha ao enviar imagem ao GitHub (HTTP " + githubError[1] + "). Verifique as permissões do token."
+            : "Não foi possível cadastrar o produto. Confira os logs do servidor." });
     }
 });
 
