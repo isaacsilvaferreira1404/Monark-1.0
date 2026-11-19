@@ -333,7 +333,8 @@ const uploadProductImage = async (image, imageFormat) => {
         signal: AbortSignal.timeout(20000)
     });
     if (!response.ok) {
-        console.error("GitHub upload failed:", response.status);
+        const details = await response.json().catch(() => ({}));
+        console.error("GitHub upload failed:", response.status, String(details.message || "").slice(0, 250));
         throw new Error(`GITHUB_UPLOAD_FAILED_${response.status}`);
     }
     return { imageUrl: `https://raw.githubusercontent.com/${githubRepo}/main/${path}` };
@@ -397,9 +398,11 @@ app.post("/api/admin/products", adminLimiter, requireAdministrator, handleProduc
         res.status(201).json({ product });
     } catch (error) {
         console.error("Erro ao cadastrar produto:", error);
-        const githubError = /^GITHUB_UPLOAD_FAILED_(\\d+)$/.exec(error.message || "");
+        const githubError = /^GITHUB_UPLOAD_FAILED_(\d+)$/.exec(error.message || "");
         res.status(500).json({ error: githubError
-            ? "Falha ao enviar imagem ao GitHub (HTTP " + githubError[1] + "). Verifique as permissões do token."
+            ? (githubError[1] === "403"
+                ? "GitHub recusou o envio (403). Verifique se o token tem Contents: Read and write no repositório Monark-1.0 e se está autorizado para a organização, quando aplicável."
+                : "Falha ao enviar imagem ao GitHub (HTTP " + githubError[1] + "). Verifique o token.")
             : "Não foi possível cadastrar o produto. Confira os logs do servidor." });
     }
 });
