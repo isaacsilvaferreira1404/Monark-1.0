@@ -35,7 +35,7 @@ app.set("trust proxy", 1);
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            imgSrc: ["'self'", "data:", "blob:", "https://firebasestorage.googleapis.com", "https://images.unsplash.com"]
+            imgSrc: ["'self'", "data:", "blob:", "https:"]
         }
     }
 }));
@@ -375,7 +375,7 @@ const saveProduct = async product => db.runTransaction(async transaction => {
     return { ...product, id, active: true };
 });
 
-app.post("/api/admin/products", adminLimiter, requireAdministrator, handleProductImageUpload, async (req, res) => {
+app.post("/api/admin/products", adminLimiter, requireAdministrator, async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const description = String(req.body?.description || "").trim();
     const rawPrice = String(req.body?.price || "").trim();
@@ -394,33 +394,30 @@ app.post("/api/admin/products", adminLimiter, requireAdministrator, handleProduc
     if (!productCategories.has(category)) {
         return res.status(400).json({ error: "Selecione uma categoria válida." });
     }
-    if (!req.file) {
-        return res.status(400).json({ error: "Selecione uma imagem JPEG, PNG ou WebP de até 4 MB." });
-    }
-
-    const imageFormat = detectImageFormat(req.file.buffer);
-    if (!imageFormat || imageFormat.mimeType !== req.file.mimetype) {
-        return res.status(400).json({ error: "O arquivo selecionado não é uma imagem JPEG, PNG ou WebP válida." });
-    }
-
-    let storedImage;
+    const rawImageUrl = String(req.body?.imageUrl || "").trim();
+    let imageUrl;
     try {
-        storedImage = await uploadProductImage(req.file, imageFormat);
+        const parsed = new URL(rawImageUrl);
+        if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password ||
+            /^(localhost|127\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|169\\.254\\.|0\\.)/i.test(parsed.hostname) ||
+            rawImageUrl.length > 1500) throw new Error("invalid");
+        imageUrl = parsed.href;
+    } catch {
+        return res.status(400).json({ error: "Informe o link HTTPS público de uma imagem do produto." });
+    }
+
+    try {
         const product = await saveProduct({
             name,
             description,
             price: Number(price.toFixed(2)),
-            image: storedImage.imageUrl,
+            image: imageUrl,
             category
         });
         res.status(201).json({ product });
     } catch (error) {
-        if (storedImage) await storedImage.file.delete({ ignoreNotFound: true }).catch(() => {});
         console.error("Erro ao cadastrar produto:", error);
-        const storageIssue = /bucket|storage|permission|billing|not found|does not exist|404/i.test(String(error.message || ""));
-        res.status(500).json({ error: storageIssue
-            ? "Falha no Firebase Storage. Verifique se o bucket existe, se o serviço está ativo e se FIREBASE_STORAGE_BUCKET está configurado na Vercel."
-            : "Não foi possível salvar o produto no Firebase. Confira os logs do servidor." });
+        res.status(500).json({ error: "Não foi possível salvar o produto no Firestore. Confira os logs do servidor." });
     }
 });
 
