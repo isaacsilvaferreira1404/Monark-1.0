@@ -9,7 +9,7 @@ dotenv.config();
 
 let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "monark-7d352";
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+const serviceAccountJson = process.env.SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 const localAdcPath = process.env.APPDATA
     ? join(process.env.APPDATA, "gcloud", "application_default_credentials.json")
     : join(homedir(), ".config", "gcloud", "application_default_credentials.json");
@@ -19,7 +19,7 @@ const cloudRuntime = process.env.K_SERVICE || process.env.K_REVISION ||
 let credential;
 if (serviceAccountJson) {
     let normalizedValue = serviceAccountJson.trim();
-    normalizedValue = normalizedValue.replace(/^FIREBASE_SERVICE_ACCOUNT_JSON\s*=\s*/, "");
+    normalizedValue = normalizedValue.replace(/^(?:FIREBASE_)?SERVICE_ACCOUNT_JSON\s*=\s*/, "");
     if ((normalizedValue.startsWith("'") && normalizedValue.endsWith("'")) ||
         (normalizedValue.startsWith('"') && normalizedValue.endsWith('"'))) {
         normalizedValue = normalizedValue.slice(1, -1);
