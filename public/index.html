@@ -191,8 +191,9 @@
                         <option value="salgados">Salgados</option>
                     </select>
 
-                    <label for="admin-product-image">Imagem do produto</label>
-                    <input id="admin-product-image" name="image" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <label for="admin-product-image-url">Link público da imagem (HTTPS)</label>
+                    <input id="admin-product-image-url" name="imageUrl" type="url" placeholder="https://exemplo.com/imagem.jpg" maxlength="1500" required>
+                    <p class="checkout-account-note">Use o link direto de uma imagem pública. Não é necessário Firebase Storage.</p>
                     <div class="admin-image-preview" aria-live="polite">
                         <img id="admin-product-image-preview" alt="Pré-visualização da imagem do produto" hidden>
                         <span id="admin-product-image-placeholder">A prévia da imagem aparecerá aqui.</span>
