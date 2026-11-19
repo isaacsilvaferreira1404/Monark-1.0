@@ -318,3 +318,58 @@ section { scroll-margin-top: 90px; }
     .testimonials-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .testimonial-card { min-height: 235px; padding: 24px 21px; }
 }
+
+/* Cadastro de produtos: card confortável em telas de computador */
+.auth-modal:has(#admin-product-panel:not([hidden])) {
+    width: min(100%, 680px);
+    max-height: min(90dvh, 900px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.auth-modal:has(#admin-product-panel:not([hidden])) .admin-product-panel {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+    min-width: 0;
+}
+.auth-modal:has(#admin-product-panel:not([hidden])) .admin-product-panel form {
+    gap: 11px;
+}
+.auth-modal:has(#admin-product-panel:not([hidden])) .admin-product-panel input,
+.auth-modal:has(#admin-product-panel:not([hidden])) .admin-product-panel select,
+.auth-modal:has(#admin-product-panel:not([hidden])) .admin-product-panel textarea {
+    min-width: 0;
+    box-sizing: border-box;
+}
+.auth-modal:has(#admin-product-panel:not([hidden])) .admin-image-preview {
+    min-height: 155px;
+}
+@media (min-width: 768px) {
+    .auth-modal:has(#admin-product-panel:not([hidden])) {
+        padding: 32px 40px;
+    }
+    .auth-modal:has(#admin-product-panel:not([hidden])) .admin-product-panel form {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        column-gap: 22px;
+    }
+    .admin-product-panel form > label,
+    .admin-product-panel form > textarea,
+    .admin-product-panel form > input:not(#admin-product-price),
+    .admin-product-panel form > .checkout-account-note,
+    .admin-product-panel form > .admin-image-preview,
+    .admin-product-panel form > #admin-product-feedback,
+    .admin-product-panel form > #admin-product-submit {
+        grid-column: 1 / -1;
+    }
+    .admin-product-panel form > label[for="admin-product-price"] { grid-column: 1; grid-row: 5; }
+    .admin-product-panel form > #admin-product-price { grid-column: 1; grid-row: 6; }
+    .admin-product-panel form > label[for="admin-product-category"] { grid-column: 2; grid-row: 5; }
+    .admin-product-panel form > #admin-product-category { grid-column: 2; grid-row: 6; }
+}
+@media (max-width: 767px) {
+    .auth-modal:has(#admin-product-panel:not([hidden])) {
+        width: min(100%, 480px);
+        max-height: calc(100dvh - 32px);
+        padding: 24px 20px;
+    }
+}
