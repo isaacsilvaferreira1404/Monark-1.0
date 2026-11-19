@@ -16,10 +16,49 @@ const localAdcPath = process.env.APPDATA
 const cloudRuntime = process.env.K_SERVICE || process.env.K_REVISION ||
     process.env.GAE_ENV || process.env.GCE_METADATA_HOST;
 
+const decodeEscapedJsonWhitespace = value => {
+    const whitespaceEscapes = { n: "\n", r: "\r", t: "\t" };
+    let normalized = "";
+    let insideString = false;
+    let escaped = false;
+
+    for (let index = 0; index < value.length; index += 1) {
+        const character = value[index];
+
+        if (insideString) {
+            normalized += character;
+            if (escaped) escaped = false;
+            else if (character === "\\") escaped = true;
+            else if (character === "\"") insideString = false;
+            continue;
+        }
+
+        if (character === "\"") {
+            insideString = true;
+            normalized += character;
+            continue;
+        }
+
+        if (character === "\\" && whitespaceEscapes[value[index + 1]]) {
+            normalized += whitespaceEscapes[value[index + 1]];
+            index += 1;
+            continue;
+        }
+
+        normalized += character;
+    }
+
+    return normalized;
+};
+
 let credential;
 if (serviceAccountJson) {
     let normalizedValue = serviceAccountJson.trim();
     normalizedValue = normalizedValue.replace(/^(?:FIREBASE_)?SERVICE_ACCOUNT_JSON\s*=\s*/, "");
+    if (normalizedValue.startsWith("$'") && normalizedValue.endsWith("'")) {
+        normalizedValue = normalizedValue.slice(2, -1);
+    }
+    normalizedValue = decodeEscapedJsonWhitespace(normalizedValue);
     if ((normalizedValue.startsWith("'") && normalizedValue.endsWith("'")) ||
         (normalizedValue.startsWith('"') && normalizedValue.endsWith('"'))) {
         normalizedValue = normalizedValue.slice(1, -1);
@@ -37,6 +76,11 @@ if (serviceAccountJson) {
             try {
                 const parsedValue = JSON.parse(candidate);
                 serviceAccount = typeof parsedValue === "string" ? JSON.parse(parsedValue) : parsedValue;
+                if (typeof serviceAccount.private_key === "string") {
+                    serviceAccount.private_key = serviceAccount.private_key
+                        .replace(/\\r\\n/g, "\n")
+                        .replace(/\\n/g, "\n");
+                }
                 break;
             } catch {
                 const jsonLikeValue = candidate
@@ -56,7 +100,7 @@ if (serviceAccountJson) {
         }
     } catch (error) {
         throw new Error(
-            "FIREBASE_SERVICE_ACCOUNT_JSON deve conter o JSON completo da conta de serviço.",
+            "SERVICE_ACCOUNT_JSON ou FIREBASE_SERVICE_ACCOUNT_JSON deve conter o JSON completo da conta de serviço.",
             { cause: error },
         );
     }
